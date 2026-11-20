@@ -184,3 +184,22 @@ test('a long body is written whole', () => {
   assert.equal(r.u8(), 1);
   assert.deepEqual(r.bytesField(), long);
 });
+
+/**
+ * Verifies: [PROTOCOL Values and fields] fixed-width fields written past the first buffer are kept, every width.
+ * A regression test: the writer once set them through the view of the buffer it was replacing, so they were lost.
+ */
+test('fixed-width fields cross the first buffer', () => {
+  const w = new Writer();
+  for (let i = 0; i < 300; i += 1) w.u8(i % 256);
+  for (let i = 0; i < 100; i += 1) w.u32(i).i32(-i).u64(BigInt(i)).i64(-BigInt(i)).i128(BigInt(-i));
+  const r = new Reader(w.finish(), 'reply');
+  for (let i = 0; i < 300; i += 1) assert.equal(r.u8(), i % 256);
+  for (let i = 0; i < 100; i += 1) {
+    assert.deepEqual(
+      [r.u32(), r.i32(), r.u64(), r.i64(), r.i128()],
+      [i, i === 0 ? 0 : -i, BigInt(i), -BigInt(i), BigInt(-i)],
+    );
+  }
+  r.finish();
+});

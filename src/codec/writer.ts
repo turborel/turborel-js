@@ -64,7 +64,9 @@ export class Writer {
   }
 
   /**
-   * Room for `n` more bytes, the buffer grown if it lacks it.
+   * Room for `n` more bytes, the buffer grown if it lacks it. A caller
+   * takes the offset before touching the buffer or its view, as growing
+   * replaces both.
    *
    * @param n - the bytes about to be written
    * @returns where they go
@@ -92,7 +94,8 @@ export class Writer {
    */
   u8(n: number): this {
     if (!within(n, 0, U8_MAX)) throw apiMisuse(`${String(n)} is no octet`);
-    this.view.setUint8(this.reserve(1), n);
+    const at = this.reserve(1);
+    this.view.setUint8(at, n);
     return this;
   }
 
@@ -105,7 +108,8 @@ export class Writer {
    */
   u32(n: number): this {
     if (!within(n, 0, U32_MAX)) throw apiMisuse(`${String(n)} is no u32`);
-    this.view.setUint32(this.reserve(U32_BYTES), n, true);
+    const at = this.reserve(U32_BYTES);
+    this.view.setUint32(at, n, true);
     return this;
   }
 
@@ -118,7 +122,8 @@ export class Writer {
    */
   i32(n: number): this {
     if (!within(n, I32_MIN, I32_MAX)) throw apiMisuse(`${String(n)} is no i32`);
-    this.view.setInt32(this.reserve(U32_BYTES), n, true);
+    const at = this.reserve(U32_BYTES);
+    this.view.setInt32(at, n, true);
     return this;
   }
 
@@ -131,7 +136,8 @@ export class Writer {
    */
   u64(n: bigint): this {
     if (BigInt.asUintN(BITS_64, n) !== n) throw apiMisuse(`${String(n)} is no u64`);
-    this.view.setBigUint64(this.reserve(U64_BYTES), n, true);
+    const at = this.reserve(U64_BYTES);
+    this.view.setBigUint64(at, n, true);
     return this;
   }
 
@@ -144,7 +150,8 @@ export class Writer {
    */
   i64(n: bigint): this {
     if (BigInt.asIntN(BITS_64, n) !== n) throw apiMisuse(`${String(n)} is no i64`);
-    this.view.setBigInt64(this.reserve(U64_BYTES), n, true);
+    const at = this.reserve(U64_BYTES);
+    this.view.setBigInt64(at, n, true);
     return this;
   }
 
