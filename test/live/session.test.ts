@@ -11,13 +11,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { Password, Trust } from '../../src/auth/mechanism.js';
+import { MAX_BODY } from '../../src/codec/frame.js';
+import { type Reply, decodeReply } from '../../src/codec/replies.js';
+import { type Request, encodeRequest } from '../../src/codec/requests.js';
 import { Uuid, Xml } from '../../src/codec/values.js';
 import * as cap from '../../src/session/capabilities.js';
 import { connectTo } from '../../src/session/connect.js';
 import type { Outcome } from '../../src/session/statements.js';
 import { type Notice, Offer } from '../../src/session/told.js';
-import { local } from '../../src/transport/target.js';
-import { USERS } from '../server/server.js';
+import { FrameStream } from '../../src/transport/frames.js';
+import { local, open, tcp } from '../../src/transport/target.js';
+import { PORT, USERS } from '../server/server.js';
 import { isConnectionFailure, isFailure } from '../support/failures.js';
 import { ann, live, liveServer } from '../support/live.js';
 
@@ -273,4 +277,57 @@ test('UUIDs', async (t) => {
   assert.deepEqual(second.octets, new Uint8Array(16).fill(0xab));
   await conn.query('ROLLBACK');
   await conn.terminate();
+});
+
+/**
+ * The names of the Statuses a raw connection receives before the reply that ends `request`'s replies.
+ *
+ * @param frames - the connection's frames
+ * @param request - the request, sent first
+ * @param ends - the kind of the reply that ends them
+ * @returns the names, in order
+ */
+async function statusesOf(frames: FrameStream, request: Request, ends: Reply['kind']): Promise<string[]> {
+  await frames.write(encodeRequest(request), 5000);
+  const names: string[] = [];
+  for (;;) {
+    const frame = await frames.next(MAX_BODY, 5000);
+    const reply = decodeReply(frame.kind, frame.body);
+    if (reply.kind === 'status') names.push(reply.name);
+    else if (reply.kind === ends) return names;
+    else if (reply.kind === 'error') throw reply.failure;
+  }
+}
+
+/** The names of the page's table, in its order. */
+const TABLE = ['SERVER_VERSION', 'AUTHORIZATION', 'SCHEMA', 'READ_ONLY', 'SERVER_READ_ONLY', 'CATALOG', 'OWNER'];
+
+/** Verifies: [PROTOCOL Status 'T'] at login and after Reset one of each name of the table, in its order, then the session's settings; after a statement only what it changed. */
+test('statuses in their order', async (t) => {
+  if (live(t) === undefined) return;
+  const { socket } = await open(tcp('127.0.0.1', PORT), 5000);
+  const frames = new FrameStream(socket);
+  const hello: Request = {
+    kind: 'hello',
+    version: 1,
+    user: 'ann',
+    mechanism: 'trust',
+    initial: new Uint8Array(0),
+    capabilities: Offer.default().capabilities,
+    attributes: [],
+  };
+  const login = await statusesOf(frames, hello, 'ready');
+  assert.deepEqual(login.slice(0, TABLE.length), TABLE);
+  assert.ok(login.includes('SESSION.TIME_ZONE') && login.includes('TRANSACTION.ISOLATION'));
+  const query = (sql: string): Request => ({ kind: 'query', sql, ends: true, attributes: [], multi: false });
+  // The session's first statement is not checked: turboreld at b40bd830
+  // tells AUTHORIZATION, SCHEMA, READ_ONLY, SERVER_READ_ONLY and OWNER
+  // again after it, changed or not.
+  await statusesOf(frames, query('VALUES 1'), 'complete');
+  assert.deepEqual(await statusesOf(frames, query('VALUES 1'), 'complete'), [], 'a statement that changed nothing');
+  const zone = "SET TIME ZONE INTERVAL '+02:00' HOUR TO MINUTE";
+  assert.deepEqual(await statusesOf(frames, query(zone), 'complete'), ['SESSION.TIME_ZONE']);
+  const reset = await statusesOf(frames, { kind: 'reset' }, 'complete');
+  assert.deepEqual(reset, login, 'every name again, in the same order');
+  frames.destroy();
 });

@@ -76,9 +76,9 @@ export interface Ran {
 export class Statement {
   /** The number its connection gave it. */
   readonly number: number;
-  /** Its dynamic parameters' types, in order. */
+  /** Its dynamic parameters' types, in order: its inputs, of a CALL not those of output parameters alone. */
   readonly parameters: readonly Parameter[];
-  /** The columns of its rows, of a query; none of another statement. */
+  /** The columns of its rows, of a query; of a CALL, one for each `?` of an output parameter, whose values `execute` gives as a row; none of another statement. */
   readonly columns: readonly Column[];
 
   /**

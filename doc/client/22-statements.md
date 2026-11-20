@@ -63,8 +63,10 @@ stopped the rest. Under autocommit each statement is its own
 transaction.
 
 `prepare` numbers a statement itself and prepares it: its parameters'
-types and a query's columns. `execute` runs it with a value for each
-parameter: a query's rows, all of them, or a completion. `openCursor`
+types, its inputs', and a query's columns, or a CALL's, one for each
+OUT or INOUT parameter. `execute` runs it with a value for each
+parameter: a query's rows, all of them; a CALL's output parameters'
+values, as one row of its columns; or a completion. `openCursor`
 opens a cursor of a query and takes its first `rows` rows, all if 0;
 `fetch` takes the next; the cursor closes once its last row is read, or
 by `close`. Under autocommit, the server granting `fetch-ends`, the

@@ -276,3 +276,21 @@ test('a cursor ends its transaction', async (t) => {
   assert.equal(conn.inTransaction, false, 'a failing fetch rolled it back');
   await conn.terminate();
 });
+
+/** Verifies: [PROTOCOL Execute 'E'] [PROTOCOL Prepared 'P'] a CALL's parameters are its inputs, its columns its OUT and INOUT parameters; executed, it gives one row of their values. */
+test('CALL output parameters', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  await conn.query(
+    'CREATE PROCEDURE TWICE(IN A INTEGER, INOUT B INTEGER, OUT C INTEGER) LANGUAGE SQL CONTAINS SQL BEGIN SET C = A * 2; SET B = B + 1; END',
+  );
+  const call = await conn.prepare('CALL TWICE(?, ?, ?)');
+  assert.equal(call.parameters.length, 2, 'A and B, the inputs');
+  assert.deepEqual(
+    call.columns.map((c) => c.name),
+    ['B', 'C'],
+  );
+  assert.deepEqual(rowsOf(await conn.execute(call, [21n, 1n])), [[2n, 42n]]);
+  await conn.query('ROLLBACK');
+  await conn.terminate();
+});

@@ -132,7 +132,7 @@ test('plain objects and arrays', () => {
   }
 });
 
-/** Verifies: [PROTOCOL Values] arrays and objects nest at most 128 deep, as turborel's MAX_NESTING, written or read. */
+/** Verifies: [PROTOCOL JSON values] arrays and objects nest at most 128 deep, as turborel's MAX_NESTING, written or read. */
 test('JSON nests at most 128 deep', () => {
   const nested = (depth: number): JsonInput => (depth === 0 ? null : [nested(depth - 1)]);
   const deepest = Json.of(nested(128));
@@ -183,4 +183,57 @@ test('damaged documents are refused', () => {
       ['a', null],
     ]),
   );
+});
+
+/** Verifies: [PROTOCOL JSON values] the page's example: `{"a":[1,"x"]}` is its 51 octets, and the directory of `{"b":1,"a":2}` puts `a` first, its members in written order. */
+test("the page's examples", () => {
+  const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex').toUpperCase();
+  const example =
+    '01' +
+    '0B' +
+    '01000000' +
+    '25000000' +
+    '00000000' +
+    '0100000061' +
+    '0A' +
+    '02000000' +
+    '0F000000' +
+    '00000000' +
+    '09000000' +
+    '03' +
+    '0100000000000000' +
+    '08' +
+    '0100000078';
+  const written = Json.of({ a: [1n, 'x'] }).bytes;
+  assert.equal(written.byteLength, 51);
+  assert.equal(hex(written), example);
+  const twoKeys = Json.of({ b: 1n, a: 2n }).bytes;
+  assert.equal(hex(twoKeys.subarray(10, 18)), '0E000000' + '00000000', 'member a at 14, then b at 0');
+  const item = Json.ofBytes(twoKeys).item();
+  assert.ok(item instanceof JsonObject);
+  assert.deepEqual(
+    item.members.map(([k]) => k),
+    ['b', 'a'],
+  );
+});
+
+/** Verifies: [PROTOCOL JSON values] an exact number is written in the narrowest of its nodes, and a decimal keeps the scale it was written with: 1.50 is units 150, scale 2. */
+test('a decimal keeps its scale', () => {
+  const bytes = Json.of(new Decimal(150n, 2)).bytes;
+  assert.deepEqual([...bytes], [1, 4, 150, 0, 0, 0, 0, 0, 0, 0, 2], 'node 4, units 150, scale 2');
+  const back = Json.ofBytes(bytes).item();
+  assert.ok(back instanceof Decimal);
+  assert.equal(String(back), '1.50');
+  assert.equal(Json.of(new Decimal(15n, 0)).bytes[1], 3, 'scale 0, an integer');
+  assert.equal(Json.of(new Decimal(1n, 300)).bytes[1], 5, 'a scale past an octet, a wide decimal');
+  assert.equal(Json.of(new Decimal(2n ** 70n, 2)).bytes[1], 5, 'units past an i64, a wide decimal');
+});
+
+/** Verifies: [PROTOCOL JSON values] a document is at most 256 MiB: one longer is refused as it is written. */
+test('a document is at most 256 MiB', () => {
+  const most = 268_435_456;
+  // A string's node is its tag and length, after the version octet.
+  const fits = 'x'.repeat(most - 6);
+  assert.equal(Json.of(fits).bytes.byteLength, most);
+  assert.throws(() => Json.of(`${fits}x`), isFailure(-900, '0A000'));
 });

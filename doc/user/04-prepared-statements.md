@@ -34,6 +34,27 @@ await conn.terminate();
 Values too few or too many for the parameters fail with SQLSTATE 07001;
 a statement deallocated, with 26000.
 
+A CALL's parameters are its inputs alone. Its columns are one for each
+`?` of an OUT or INOUT parameter, in the procedure's parameter order, so
+an INOUT `?` is both; `execute` gives their values once the procedure
+ran, as one row.
+
+```js
+import { Trust, connectTo, tcp } from 'turborel';
+
+const conn = await connectTo(tcp('127.0.0.1', 7422), 'ann', new Trust());
+await conn.query(
+  'CREATE PROCEDURE TWICE(IN A INTEGER, OUT C INTEGER) LANGUAGE SQL CONTAINS SQL BEGIN SET C = A * 2; END',
+);
+const call = await conn.prepare('CALL TWICE(?, ?)');
+console.log(call.parameters.length, call.columns.map((c) => c.name));
+console.log((await conn.execute(call, [21n])).rows);
+await conn.query('ROLLBACK');
+await conn.terminate();
+// 1 [ 'C' ]
+// [ [ 42n ] ]
+```
+
 ## Cursors
 
 `openCursor(statement, values, { rows })` opens a cursor of a prepared

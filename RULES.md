@@ -449,12 +449,9 @@ rule here, the rule is kept:
 
 Where turborel-client's code contradicts what The Native Protocol or
 The Client Library says outright, the driver follows the documents, and
-each such place is listed here, so the reference can be fixed:
-
-- After ChangeUser, no transaction is active: the session is renewed as
-  by Reset (`[PROTOCOL ChangeUser 'U']`), so `inTransaction` is false
-  once the server's Ready comes. turborel-client's `change_user` keeps
-  the flag its last statement left (`client/src/session.rs` at 1c4187e4).
+each such place is listed here, so the reference can be fixed. At
+b40bd830 none is: the one there was, a transaction left active after
+ChangeUser, is fixed in turborel-client.
 
 ### This driver's own
 
