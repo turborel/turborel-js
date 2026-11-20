@@ -54,7 +54,7 @@ Project automation is the language's own tooling, never shell scripts
 | `src/error.ts` | `TurborelError`, the driver's error (D12) |
 | `src/codec/` | the `codec` layer, with no I/O |
 | `src/transport/`, `src/auth/`, `src/tls/`, `src/session/`, `src/statements/`, `src/lobs/`, `src/copy/`, `src/settings/`, `src/pipeline/`, `src/pool/`, `src/api/` | the other layers of D1, each made as its milestone comes |
-| `test/` | the tests, one `*.test.ts` beside the path of what it tests; `test/support/`, the helpers they share; `test/tools/`, the checks tool's |
+| `test/` | the tests, one `*.test.ts` beside the path of what it tests; `test/support/`, the helpers they share; `test/tools/`, the checks tool's; `test/live/`, the live tests, and `test/server/`, their server's set-up (D18) |
 | `doc/` | the manual |
 | `dist/`, `build/`, `coverage/` | made by the build, the tests and coverage; ignored |
 

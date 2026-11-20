@@ -60,6 +60,7 @@ Each is told in full in [§7](#7-the-decisions).
 | D15 | Tests on `node:test` against the compiled code; coverage by c8 |
 | D16 | The development dependencies |
 | D17 | Each value of the protocol is a JavaScript type that holds it exactly, or a class of the driver's own |
+| D18 | A connection is a promise of replies over Node.js's own sockets, each wait bounded as turborel-client bounds it |
 
 ---
 
@@ -77,7 +78,7 @@ Each is told in full in [§7](#7-the-decisions).
 | `src/error.ts` | `TurborelError`, the driver's error (D12) |
 | `src/codec/` | the `codec` layer, with no I/O |
 | `src/transport/`, `src/auth/`, `src/tls/`, `src/session/`, `src/statements/`, `src/lobs/`, `src/copy/`, `src/settings/`, `src/pipeline/`, `src/pool/`, `src/api/` | the other layers of D1, each made as its milestone comes |
-| `test/` | the tests, one `*.test.ts` beside the path of what it tests; `test/support/`, the helpers they share; `test/tools/`, the checks tool's |
+| `test/` | the tests, one `*.test.ts` beside the path of what it tests; `test/support/`, the helpers they share; `test/tools/`, the checks tool's; `test/live/`, the live tests, and `test/server/`, their server's set-up (D18) |
 | `doc/` | the manual |
 | `dist/`, `build/`, `coverage/` | made by the build, the tests and coverage; ignored |
 
@@ -614,6 +615,32 @@ a `bigint` or a `Decimal`, an approximate one a `number`, a DECFLOAT a
 members in the order written, a key perhaps more than once. One is made
 of those, or of plain objects and arrays of them; a `number` is written
 as an approximate number, as D11 sends one.
+
+#### D18. A connection is a promise of replies over Node.js's own sockets, each wait bounded as turborel-client bounds it
+
+A connection (`src/session/connection.ts`) reads its socket's frames as
+they arrive (`src/transport/frames.ts`), each `receive` a promise of the
+next reply, and holds a frame's body only as its bytes arrive and only
+up to the longest taken; past a megabyte buffered and unread, the socket
+is paused, so a server faster than the program holds no more. Every
+wait is bounded as turborel-client's `timeouts.rs` bounds it: the
+connect timeout for connecting, TLS and each step of the login, then
+the read timeout, none by default, for each read and write. A Windows
+named pipe's reads and writes are not bounded once it is open, as
+turborel-client's are not, the standard library setting no limit on a
+pipe.
+
+TLS is Node.js's own (`node:tls`). The platform's authorities are those
+of the files SSL_CERT_FILE and SSL_CERT_DIR name, if either is set, as
+turborel-client's rustls-native-certs reads them, else the system's
+store, read by `tls.getCACertificates('system')`, or, where that reads
+none, the authorities Node.js bundles.
+
+The live tests run against a turboreld their set-up starts on port
+17432 (`test/server/server.ts`), with certificates made for the run by
+`openssl`, SCRAM users made by `turboreld user add`, and
+SERVER.TRUST_LOCAL ON; in CI, on Linux, the nightly image run with the
+host's network, so the same set-up serves both.
 
 ---
 

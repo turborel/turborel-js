@@ -9,39 +9,12 @@ in [RULES.md](RULES.md).
 
 Code never cites this file (R-DOC-5).
 
-[M1 Codec](#m1-codec) · [M2 Connect](#m2-connect) ·
 [M3 Statements](#m3-statements) ·
 [M4 Large objects and bulk](#m4-large-objects-and-bulk) ·
 [M5 Settings](#m5-settings) · [M6 Throughput](#m6-throughput) ·
 [M7 Standard API](#m7-standard-api) · [M8 Parity audit](#m8-parity-audit)
 
 ---
-
-## M1 Codec
-
-Every message encoded and decoded, with no I/O, each with its codec
-tests.
-
-- The tail: the P-TAIL rows.
-
-## M2 Connect
-
-- Transport: P-INTRO-1 to P-INTRO-3, C-CONN-1 to C-CONN-3, and the
-  C-TIME rows.
-- Logging in: the P-OPEN and P-MECH rows, P-INTRO-4, P-HELLO-2,
-  P-READY-2, P-ERROR-2, C-CONN-4, C-CONN-5, C-CONN-8, C-CONN-10,
-  C-CONN-11 and C-CONN-13.
-- TLS: C-CONN-6, C-CONN-7, C-CONN-9 and C-CONN-12, by the language's
-  own TLS.
-- Capabilities and status: P-CAP-2, P-CAP-10, P-CAP-12, P-CAP-19,
-  P-STATUS-2 to P-STATUS-10, the C-ASK rows and C-TOLD-1.
-- The SCRAM key cache: C-KEY-1 and C-KEY-3 to C-KEY-8.
-- Ending: P-CANCEL-1, P-CANCEL-2, P-TERM-1, C-CONN-14 and C-RUN-6.
-- The live tests' server set-up, with test certificates, SCRAM users and
-  SERVER.TRUST_LOCAL, on `ghcr.io/turborel/turborel:nightly` in CI
-  (R-TEST-8).
-- The manual: the User's Guide's chapter Connecting and the API
-  Reference's page of connections.
 
 ## M3 Statements
 
