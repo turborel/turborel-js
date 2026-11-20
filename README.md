@@ -33,8 +33,8 @@ The driver is built in milestones, M0 to M8. So far its low-level
 client connects by every transport and mechanism and runs statements,
 prepared or not, with their cursors, large objects, copies, imports and
 exports, connects by settings, a URI and their files to one of
-several servers, and pipelines, pools and keeps named connections; the
-standard API comes at M7.
+several servers, and pipelines, pools and keeps named connections; over
+it is the standard API.
 [CONFORMANCE.md](CONFORMANCE.md) shows what is done, row by
 row, and [TODO.md](TODO.md) what is open.
 
@@ -65,9 +65,7 @@ CommonJS program loads with `require` as well.
 
 ## A first query
 
-This is what the standard API will be once milestone M7 builds it and
-M8's audit checks it. None of it runs yet, and its names may change
-until then.
+The standard API, as [Installing](doc/user/01-installing.md) shows it:
 
 ```js
 import { connect } from 'turborel';

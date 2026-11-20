@@ -20,6 +20,9 @@ whether the session's transaction is still active after it; and
 import { Trust, connectTo, tcp } from 'turborel';
 
 const conn = await connectTo(tcp('127.0.0.1', 7422), 'ann', new Trust());
+await conn.query('CREATE TABLE STAFF (ID INTEGER PRIMARY KEY, NAME VARCHAR(20))');
+await conn.query("INSERT INTO STAFF VALUES (1, 'Ada'), (2, 'Grace')");
+await conn.query('COMMIT');
 try {
   await conn.query("INSERT INTO STAFF VALUES (1, 'Again')");
 } catch (e) {

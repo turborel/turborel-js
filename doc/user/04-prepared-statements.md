@@ -20,6 +20,9 @@ go.
 import { Trust, connectTo, tcp } from 'turborel';
 
 const conn = await connectTo(tcp('127.0.0.1', 7422), 'ann', new Trust());
+await conn.query('CREATE TABLE STAFF (ID INTEGER PRIMARY KEY, NAME VARCHAR(20))');
+await conn.query("INSERT INTO STAFF VALUES (1, 'Ada'), (2, 'Grace')");
+await conn.query('COMMIT');
 const byId = await conn.prepare('SELECT NAME FROM STAFF WHERE ID = ?');
 console.log(byId.parameters.map((p) => p.type.kind), byId.columns.map((c) => c.name));
 console.log((await conn.execute(byId, [1n])).rows);

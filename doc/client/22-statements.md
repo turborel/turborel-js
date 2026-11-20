@@ -98,6 +98,9 @@ The statement's own failures are the server's, as it reports them.
 import { Trust, connectTo, tcp } from 'turborel';
 
 const conn = await connectTo(tcp('127.0.0.1', 7422), 'ann', new Trust());
+await conn.query('CREATE TABLE STAFF (ID INTEGER PRIMARY KEY, NAME VARCHAR(20))');
+await conn.query("INSERT INTO STAFF VALUES (1, 'Ada'), (2, 'Grace')");
+await conn.query('COMMIT');
 const all = await conn.prepare('SELECT ID, NAME FROM STAFF ORDER BY ID');
 let batch = await conn.openCursor(all, [], { rows: 1 });
 console.log(batch);

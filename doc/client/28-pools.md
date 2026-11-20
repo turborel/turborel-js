@@ -61,8 +61,13 @@ The failure of making a connection is `get`'s own.
 ## EXAMPLES
 
 ```js
-import { Pool, Settings } from 'turborel';
+import { Pool, Settings, Trust, connectTo, tcp } from 'turborel';
 
+const conn = await connectTo(tcp('127.0.0.1', 7422), 'ann', new Trust());
+await conn.query('CREATE TABLE STAFF (ID INTEGER PRIMARY KEY, NAME VARCHAR(20))');
+await conn.query("INSERT INTO STAFF VALUES (1, 'ANN'), (2, 'BOB')");
+await conn.query('COMMIT');
+await conn.terminate();
 const pool = new Pool(Settings.fromUri('turborel://ann@127.0.0.1:7422/?tls_mode=disable'), { max: 2 });
 const work = async (id) => {
   await using lent = await pool.get();

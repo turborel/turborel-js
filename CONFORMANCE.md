@@ -858,13 +858,13 @@ later decision of RULES.md.
 
 | ID | Row | Citation | Status |
 |---|---|---|---|
-| S-API-1 | `connect`, of a `turborel://` URI or options, giving a connection | `[DESIGN] D2` | not yet |
-| S-API-2 | A connection's `query`, with parameters | `[DESIGN] D2` | not yet |
-| S-API-3 | A connection's `prepare`, and the statement it gives executed | `[DESIGN] D2` | not yet |
-| S-API-4 | Cursors as async iterators, read by `for await` | `[DESIGN] D2` | not yet |
-| S-API-5 | Transactions and autocommit | `[DESIGN] D2` | not yet |
-| S-API-6 | Pools | `[DESIGN] D2` | not yet |
-| S-API-7 | `close()` and `Symbol.asyncDispose` of connections, cursors and pools | `[DESIGN] D2` | not yet |
-| S-API-8 | Exact numbers as `bigint`, `Decimal` and `DecFloat` | `[DESIGN] D11` | not yet |
-| S-API-9 | Large objects as Node.js streams | `[DESIGN] D2` | not yet |
-| S-API-10 | A statement cancelled by an `AbortSignal` | `[DESIGN] D2` | not yet |
+| S-API-1 | `connect`, of a `turborel://` URI or options, giving a connection | `[DESIGN] D2` | done |
+| S-API-2 | A connection's `query`, with parameters | `[DESIGN] D2` | done |
+| S-API-3 | A connection's `prepare`, and the statement it gives executed | `[DESIGN] D2` | done |
+| S-API-4 | Cursors as async iterators, read by `for await` | `[DESIGN] D2` | done |
+| S-API-5 | Transactions and autocommit | `[DESIGN] D2` | done |
+| S-API-6 | Pools | `[DESIGN] D2` | done |
+| S-API-7 | `close()` and `Symbol.asyncDispose` of connections, cursors and pools | `[DESIGN] D2` | done |
+| S-API-8 | Exact numbers as `bigint`, `Decimal` and `DecFloat` | `[DESIGN] D11` | done |
+| S-API-9 | Large objects as Node.js streams | `[DESIGN] D2` | done |
+| S-API-10 | A statement cancelled by an `AbortSignal` | `[DESIGN] D2` | done |
