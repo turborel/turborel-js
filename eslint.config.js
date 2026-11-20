@@ -113,7 +113,7 @@ export default defineConfig(
       '@typescript-eslint/no-magic-numbers': [
         'error',
         {
-          ignore: [0, 1],
+          ignore: [0, 1, '0n', '1n'],
           ignoreArrayIndexes: false,
           enforceConst: true,
           detectObjects: false,

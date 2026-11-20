@@ -8,17 +8,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { HEADER_BYTES, MAX_BODY, decodeHeader, encodeHeader } from '../../src/codec/frame.js';
-import { TurborelError } from '../../src/error.js';
-
-/**
- * Whether `error` is a connection failure, SQLCODE -919 and SQLSTATE 08006.
- *
- * @param error - what was thrown
- * @returns true if it is one
- */
-function isConnectionFailure(error: unknown): boolean {
-  return error instanceof TurborelError && error.sqlcode === -919 && error.sqlstate === '08006';
-}
+import { isConnectionFailure } from '../support/failures.js';
 
 /** Verifies: [PROTOCOL Frames] the header is five bytes, a u8 kind then a u32 length, least significant first. */
 test('a header is its kind, then its length little-endian', () => {
