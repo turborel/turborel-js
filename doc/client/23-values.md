@@ -56,6 +56,15 @@ an immutable class of the driver's own where none does (RULES.md D17).
 - `PluginValue` is a value of a plug-in's type: its `typeName`, its
   `text` and its `octets`, sent back unchanged.
 
+Each value has the text turborel shows it as, which `textOf(v)` gives
+and an export writes: a string as it is, an approximate number as
+`1.5E0`, a binary string's hexits, a datetime's or an interval's
+literal string, `2026-11-19 10:00:00+02:00` or `1 02:30:00`, a JSON
+value's text, and a composite value as its literal. `literalOf(v)`
+gives a value as a literal writes it, as `DATE '2026-11-19'`. A
+`Datetime`'s, an `Interval`'s, a `Lob`'s and a `LobLocator`'s
+`toString` give their text.
+
 A column's or a parameter's type is a `DataType`, an object whose `kind`
 names its type ([Appendix A](../appendix/a-types.md#data-types)).
 
