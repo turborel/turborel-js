@@ -9,14 +9,13 @@
  * Browsers cannot open a TCP connection and are not served.
  *
  * This is the alpha, version 0.0.0, the number of the turborel release it
- * is made for. Its Promise-based API of connections, queries, prepared
- * statements, cursors as async iterators and pools (RULES.md D2) is built
- * milestone by milestone, over the low-level client it exports: so far
- * its connections, by every transport and mechanism, the statements they
- * run, prepared or not, their large objects, copies, imports and exports,
- * connecting by settings, a URI and their files to one of several
- * servers, pipelines, pools and the SQL-agent, its error type, and the values and data types its codec reads and
- * writes.
+ * is made for. Its standard API (RULES.md D2) is `connect`, which gives a
+ * `Client`, with prepared statements, cursors as async iterators and
+ * pools; beneath it is the low-level client, every feature of
+ * turborel-client: connections by every transport and mechanism, the
+ * statements they run, large objects, copies, imports and exports,
+ * settings, pipelines, pools and the SQL-agent; its error type; and the
+ * values and data types its codec reads and writes.
  *
  * @packageDocumentation
  */
@@ -106,3 +105,8 @@ export {
 export type { PoolConfig, PoolSource } from './pool/pool.js';
 export { Agent } from './agent/agent.js';
 export type { Connector } from './agent/agent.js';
+export { Client, PreparedStatement, connect } from './api/client.js';
+export type { ConnectOptions, Result, RunOptions } from './api/client.js';
+export { Cursor, DEFAULT_CURSOR_BATCH } from './api/cursor.js';
+export type { CursorReadOptions } from './api/cursor.js';
+export { ClientPool, createPool } from './api/pool.js';

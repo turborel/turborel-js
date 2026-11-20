@@ -70,3 +70,5 @@ jobs:
           echo "TURBOREL_TEST_SERVER=docker:$NIGHTLY" >> "$GITHUB_ENV"
       - name: Coverage, against its floor, the live tests among them
         run: npm run coverage
+      - name: Every example of the manual, against the nightly server
+        run: npm run examples

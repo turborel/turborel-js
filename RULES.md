@@ -64,6 +64,7 @@ Each is told in full in [§7](#7-the-decisions).
 | D19 | Bulk data moves through Node.js's streams and iterables, a copy holding the connection until it ends |
 | D20 | Settings are read as turborel-client reads them, from Node.js's own environment, home directory and resolver |
 | D21 | A pool is shared by a program's tasks, its waits promises of their own; a pooled connection is released, or disposed of |
+| D22 | The standard API is a `Client` of one operation at a time, over the low-level client, its examples run |
 
 ---
 
@@ -121,7 +122,7 @@ The tools named by "the formatter", "the linters", "the type checker" and
 | R-DOC-4 | Behaviour the protocol or turborel-client governs **shall** cite it by its heading, `[PROTOCOL Frames]`, `[CLIENT Pools]`; the driver's own choices cite their decision (D6). | review; the checks tool |
 | R-DOC-5 | No commented-out code, and no `TODO`, `FIXME` or `XXX` comments: open work goes in TODO.md, and code never cites TODO.md. | the linters or the checks tool |
 | R-DOC-6 | Every source file **shall** begin with a doc comment giving its responsibility and the sections it implements. | review |
-| R-DOC-7 | A change a program can see **shall** update the manual, `doc/`, in the same commit; every claim is checked against the code, and every example is run. The manual keeps Turborel's layout, which turborel.com's documentation site reads: each page opens with its `# Title` and a line holding only `[Contents](README.md)`, each volume's README.md lists its pages, links within `doc/` and to other files of this repository are relative links that resolve (the site points the latter at GitHub, at the same tag), a link to Turborel's own manual is its GitHub address under `https://github.com/turborel/turborel/blob/main/doc/`, `user/01-installing.md` keeps its name, and `doc/` holds no images. | review; the checks tool |
+| R-DOC-7 | A change a program can see **shall** update the manual, `doc/`, in the same commit; every claim is checked against the code, and every example is run. `npm run examples` runs them (D22). The manual keeps Turborel's layout, which turborel.com's documentation site reads: each page opens with its `# Title` and a line holding only `[Contents](README.md)`, each volume's README.md lists its pages, links within `doc/` and to other files of this repository are relative links that resolve (the site points the latter at GitHub, at the same tag), a link to Turborel's own manual is its GitHub address under `https://github.com/turborel/turborel/blob/main/doc/`, `user/01-installing.md` keeps its name, and `doc/` holds no images. | review; the checks tool; the examples tool |
 
 ### R-CONST: no magic numbers or strings
 
@@ -708,6 +709,31 @@ gives them.
 A pipeline's windows are written by one write of the connection's
 socket, its requests' frames joined, as turborel-client writes a
 window by one `write_all`.
+
+#### D22. The standard API is a `Client` of one operation at a time, over the low-level client, its examples run
+
+`connect` gives a `Client` (`src/api/`), the standard API's connection,
+named apart from the low-level client's `Connection`, which its
+`connection` gives. A low-level connection takes one request and its
+replies at a time, as turborel-client's borrows its stream; a `Client`
+is shared by a program's tasks, so it runs their operations one at a
+time, in the order asked, each operation's requests and replies whole.
+
+`query` with parameters prepares its statement, executes it and
+destroys it, so a program's statements of values are never spliced into
+SQL text. A cursor fetches 100 rows at a time unless told. `transaction`
+refuses to begin while a transaction is active (SQLSTATE 25000), as no
+transaction nests in another. An `AbortSignal` cancels its statement
+through a `Canceller`, the statement failing with the server's TB920; a
+signal aborted before the statement is sent fails it with the same
+codes, and nothing is sent. A pool's `Client` gives its connection back
+as it closes.
+
+Every JavaScript example of the manual is run by `npm run examples`
+(`tools/examples.ts`), each page's against a fresh live server, and
+what it prints compared with the output its last comment lines give;
+CI runs it on Linux against the nightly image. So a page's examples are
+written as a reader runs them, one after another, from an empty schema.
 
 ---
 
