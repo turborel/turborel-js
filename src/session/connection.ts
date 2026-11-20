@@ -14,7 +14,9 @@ import { Copying } from './copy.js';
 import { type ExportFormat, type ExportTarget, exportSink, nativeEnd } from './export.js';
 import type { OpenOptions } from './link.js';
 import { CHUNK_OCTETS, LobWriter, completed, heldRange, lobStream, octetsOf } from './lobs.js';
+import { Pipeline } from './pipeline.js';
 import { Runner } from './runner.js';
+import * as cap from './capabilities.js';
 import { Offer } from './told.js';
 import type { Completion } from '../codec/replies.js';
 import type { LobRequest } from '../codec/requests.js';
@@ -25,6 +27,9 @@ import type { FrameStream } from '../transport/frames.js';
 
 export { CONNECT_WITHIN, DEFAULT_TIMEOUTS, TERMINATE_WITHIN, VERSION, capabilitiesOf, endsConnection } from './link.js';
 export type { OpenOptions, Timeouts } from './link.js';
+
+/** The most statements a borrower may leave prepared for the connection to be given back rather than closed. */
+export const RESET_MOST_STATEMENTS = 256;
 
 /** SQLSTATE 22000, a data exception: a large object used as it cannot be. */
 const DATA_EXCEPTION = '22000';
@@ -178,6 +183,55 @@ export class Connection extends Runner {
     return await copying.finish();
   }
 
+  /** @returns a pipeline of requests on this connection, empty, continuing past a failure */
+  pipeline(): Pipeline {
+    return new Pipeline({
+      inTransaction: () => this.inTransaction,
+      autocommit: () => this.autocommit,
+      isLost: () => this.isLost,
+      attributes: () => this.told.carried(),
+      sendAll: (requests) => this.sendAll(requests),
+      queryReply: () => this.queryReply(),
+      executeReply: (statement) => this.executeReply(statement),
+      completion: async () => ({ kind: 'done', completion: await this.completion() }),
+    });
+  }
+
+  /**
+   * Puts the session back as it logged in, for the next to use, as a
+   * pool gives a connection back: autocommit off; by the protocol's Reset
+   * where the server grants it; else, in one pipeline, its transaction
+   * rolled back, the statements it prepared closed and destroyed, its
+   * user, schema and time zone those of its login; then `more`.
+   *
+   * @param more - statements run after, as a pool's `reset`
+   * @throws {@link TurborelError} 08006 for a connection lost, or past 256 statements left prepared; any statement's failure but those destroying statements already gone
+   */
+  async giveBack(more: readonly string[] = []): Promise<void> {
+    if (this.isLost) throw connectionFailure('a lost connection is not given back');
+    this.setAutocommit(false);
+    if (this.has(cap.RESET)) {
+      await this.reset();
+      this.forgetStatements();
+      for (const sql of more) await this.query(sql);
+      return;
+    }
+    const prepared = this.nextStatement;
+    if (prepared > RESET_MOST_STATEMENTS) throw connectionFailure('too many statements were left prepared to destroy');
+    const login = quotedName(this.authorization);
+    const pipeline = this.pipeline().query('ROLLBACK');
+    for (let n = 0; n < prepared; n += 1) pipeline.release(n);
+    pipeline.query(`SET SESSION AUTHORIZATION ${login}`).query(`SET SCHEMA ${login}`).query('SET TIME ZONE LOCAL');
+    for (const sql of more) pipeline.query(sql);
+    const outcomes = await pipeline.run();
+    // Each statement released is a Close and a Deallocate.
+    const releases = prepared + prepared;
+    const kept = [outcomes[0], ...outcomes.slice(1 + releases)];
+    const failed = kept.find((o) => o?.kind === 'failed');
+    if (failed?.kind === 'failed') throw failed.failure;
+    this.forgetStatements();
+  }
+
   /**
    * Runs the query `sql` and writes its rows to `out` as `format` says, as they come.
    *
@@ -193,6 +247,16 @@ export class Connection extends Runner {
     if (format === 'native') await out.write(nativeEnd());
     return streamed.count;
   }
+}
+
+/**
+ * `name` as a character string literal of a delimited identifier, as SET SESSION AUTHORIZATION and SET SCHEMA take one.
+ *
+ * @param name - the name
+ * @returns the literal
+ */
+function quotedName(name: string): string {
+  return `'"${name.replaceAll('"', '""').replaceAll("'", "''")}"'`;
 }
 
 /**

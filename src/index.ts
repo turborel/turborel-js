@@ -15,7 +15,7 @@
  * its connections, by every transport and mechanism, the statements they
  * run, prepared or not, their large objects, copies, imports and exports,
  * connecting by settings, a URI and their files to one of several
- * servers, its error type, and the values and data types its codec reads and
+ * servers, pipelines, pools and the SQL-agent, its error type, and the values and data types its codec reads and
  * writes.
  *
  * @packageDocumentation
@@ -91,3 +91,18 @@ export { ROLE_QUERY, role } from './settings/failover.js';
 export type { Role } from './settings/failover.js';
 export { modeConfig } from './tls/modes.js';
 export type { TlsFiles, TlsMode } from './tls/modes.js';
+export { PIPELINE_WINDOW, Pipeline } from './session/pipeline.js';
+export type { OnError, Piped } from './session/pipeline.js';
+export { RESET_MOST_STATEMENTS } from './session/connection.js';
+export {
+  DEFAULT_IDLE_TIMEOUT,
+  DEFAULT_MAX,
+  DEFAULT_MAX_LIFETIME,
+  DEFAULT_WAIT,
+  Pool,
+  Pooled,
+  RESET_WITHIN,
+} from './pool/pool.js';
+export type { PoolConfig, PoolSource } from './pool/pool.js';
+export { Agent } from './agent/agent.js';
+export type { Connector } from './agent/agent.js';

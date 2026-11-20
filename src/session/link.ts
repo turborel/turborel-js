@@ -250,20 +250,47 @@ export class Link {
    * @param request - the request
    */
   async #send(request: Request): Promise<void> {
+    await this.#sendAll([request]);
+  }
+
+  /**
+   * Sends requests at once, each compressed past the threshold once
+   * compression is granted; refused before anything is sent if one needs
+   * a capability not granted, or a copy is under way.
+   *
+   * @param requests - the requests
+   */
+  async #sendAll(requests: readonly Request[]): Promise<void> {
     if (this.#lost !== undefined) throw this.#lost;
-    if (this.#copying && !DURING_COPY.has(request.kind)) {
-      throw apiMisuse('a copy is under way: finish or abandon it before another request');
+    const frames: Uint8Array[] = [];
+    for (const request of requests) {
+      if (this.#copying && !DURING_COPY.has(request.kind)) {
+        throw apiMisuse('a copy is under way: finish or abandon it before another request');
+      }
+      const missing = this.#loggingIn ? [] : capabilitiesOf(request).filter((name) => !this.told.has(name));
+      if (missing.length > 0) throw connectionFailure(`the server did not grant ${missing.join(', ')}`);
+      frames.push(encodeRequest(request));
     }
-    const missing = this.#loggingIn ? [] : capabilitiesOf(request).filter((name) => !this.told.has(name));
-    if (missing.length > 0) throw connectionFailure(`the server did not grant ${missing.join(', ')}`);
-    const frame = encodeRequest(request);
-    if (request.kind === 'copyIn' || request.kind === 'copyEnd') this.#copying = request.kind === 'copyIn';
+    for (const request of requests) {
+      if (request.kind === 'copyIn' || request.kind === 'copyEnd') this.#copying = request.kind === 'copyIn';
+    }
+    const frame = frames.length === 1 ? (frames[0] ?? new Uint8Array(0)) : Buffer.concat(frames);
     const bytes = this.#compressFrom === undefined ? frame : compressFrames(frame, this.#compressFrom);
     try {
       await this.#stream.write(bytes, this.#wait());
     } catch (e) {
       throw this.#lostBy(e as TurborelError);
     }
+  }
+
+  /**
+   * Sends requests at once, before any reply is read: a pipeline's window.
+   *
+   * @param requests - the requests
+   * @throws {@link TurborelError} 08006 if the connection is lost, or a request needs a capability not granted
+   */
+  protected async sendAll(requests: readonly Request[]): Promise<void> {
+    await this.#sendAll(requests);
   }
 
   /**

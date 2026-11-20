@@ -63,6 +63,7 @@ Each is told in full in [§7](#7-the-decisions).
 | D18 | A connection is a promise of replies over Node.js's own sockets, each wait bounded as turborel-client bounds it |
 | D19 | Bulk data moves through Node.js's streams and iterables, a copy holding the connection until it ends |
 | D20 | Settings are read as turborel-client reads them, from Node.js's own environment, home directory and resolver |
+| D21 | A pool is shared by a program's tasks, its waits promises of their own; a pooled connection is released, or disposed of |
 
 ---
 
@@ -688,6 +689,25 @@ of them, in the resolver's order. A password file is read only if
 turborel-client, the driver checks no owner or permissions. The SCRAM
 key cache is the settings object's own, so every connection one
 settings object makes shares it.
+
+#### D21. A pool is shared by a program's tasks, its waits promises of their own; a pooled connection is released, or disposed of
+
+turborel-client's pool is shared by threads, a mutex and a condition
+variable keeping it, each wait the waiting thread's. A JavaScript
+program's work is tasks of one event loop, so the pool is shared by
+them, and needs no lock: a task that finds no connection waits on a
+promise of its own, woken in turn as one comes back or a place frees,
+and timed by a timer of its own, so the pool runs nothing of its own
+between calls. A Rust `Pooled` goes back to its pool as it is dropped;
+JavaScript has no such end, so a `Pooled` goes back as it is released,
+by `release()` or as `await using` disposes of it. A pool's `close()`
+closes its idle connections, as dropping the last of a Rust pool does,
+so a program's event loop can end. Times are milliseconds, as Node.js
+gives them.
+
+A pipeline's windows are written by one write of the connection's
+socket, its requests' frames joined, as turborel-client writes a
+window by one `write_all`.
 
 ---
 

@@ -67,6 +67,11 @@ export class Runner extends Link {
    */
   async query(sql: string): Promise<Outcome> {
     await this.send({ kind: 'query', sql, ends: this.#autocommit, attributes: this.told.carried(), multi: false });
+    return this.queryReply();
+  }
+
+  /** @returns the reply to a Query sent: a query's columns and rows, or another statement's completion */
+  protected async queryReply(): Promise<Outcome> {
     const first = await this.receive();
     if (first.kind === 'complete') return { kind: 'done', completion: first.completion };
     const columns = this.#columns(first);
@@ -168,9 +173,29 @@ export class Runner extends Link {
    */
   async execute(statement: Statement, values: readonly Value[] = []): Promise<Outcome> {
     await this.#execute(statement, values, { ends: this.#autocommit });
+    return this.executeReply(statement);
+  }
+
+  /**
+   * The reply to an Execute of `statement` sent.
+   *
+   * @param statement - the statement
+   * @returns a query's rows, all of them, or a CALL's output parameters' row, or another statement's completion
+   */
+  protected async executeReply(statement: Statement): Promise<Outcome> {
     if (statement.columns.length === 0) return { kind: 'done', completion: await this.completion() };
     const { rows } = await this.#rows();
     return { kind: 'rows', columns: statement.columns, rows };
+  }
+
+  /** @returns the number the next statement prepared takes, so how many this session prepared since it began or was reset */
+  protected get nextStatement(): number {
+    return this.#nextStatement;
+  }
+
+  /** Numbers statements from 0 again, the session's statements gone with a reset. */
+  protected forgetStatements(): void {
+    this.#nextStatement = 0;
   }
 
   /**
