@@ -40,6 +40,7 @@ connections it makes ([Connecting](02-connecting.md)), or settings make
 ([Settings](09-settings.md)), the statements
 they run ([Running Queries](03-queries.md)), their large objects, copies,
 imports and exports ([Copying, Importing and Exporting](07-copying.md)),
+pipelines and pools ([Pipelines and Pools](08-pipelines-and-pools.md)),
 its error type,
 `TurborelError`, and the values and data types its codec reads and
 writes, among them `Decimal`, `DecFloat`, `Datetime`, `Json` and `Uuid`

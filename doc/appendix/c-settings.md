@@ -4,8 +4,7 @@
 
 Every connection setting: its name, the same in a program's `Options`,
 a URI's query and a service file; its environment variable, if it has
-one; what it says; and its default. A pool's settings are added at
-milestone M6.
+one; what it says; and its default. Then a pool's settings.
 
 | Setting | Variable | What it says | Default |
 |---|---|---|---|
@@ -32,3 +31,18 @@ The layers, each setting taken from the first that has it: the
 program's options or URI; the service file's section; the environment;
 the defaults. A variable set but empty gives nothing. The home
 directory is Node.js's `os.homedir()`.
+
+## A pool's settings
+
+A `PoolConfig`'s fields, each in milliseconds where it is a time.
+
+| Setting | What it says | Default |
+|---|---|---|
+| `max` | The most connections made at once | 10 |
+| `maxIdle` | The most kept idle | 10 |
+| `idleTimeout` | How long one may stay idle; undefined for as long as it lives | 600,000, ten minutes |
+| `maxLifetime` | How long one lives from when it was made; undefined for no limit | 3,600,000, an hour |
+| `wait` | How long `get` waits for one to come back | 30,000, 30 seconds |
+| `check` | Whether an idle connection is checked to answer before it is handed out | `true` |
+| `reset` | Statements run as each comes back, after the pool's own | none |
+
