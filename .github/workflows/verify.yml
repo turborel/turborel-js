@@ -2,6 +2,12 @@
 # each Node.js release the driver supports (D3, D4), plus coverage against
 # its floor (R-COV-2). `npm ci` installs the development dependencies the
 # lock file pins.
+#
+# The live tests (R-TEST-8) run on Linux alone, against the nightly image
+# run by test/server/server.ts with the host's network, its certificates
+# made for the run. macOS and Windows runners have no Linux container
+# engine and no turboreld, so there the live tests skip, as they do
+# wherever TURBOREL_TEST_SERVER is not set.
 name: verify
 
 # A pull request is checked once, through pull_request, and main again once
@@ -20,6 +26,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NIGHTLY: ghcr.io/turborel/turborel:nightly
+
 jobs:
   verify:
     strategy:
@@ -36,6 +45,11 @@ jobs:
           cache: npm
       - name: Install the development dependencies
         run: npm ci
+      - name: Take the nightly server
+        if: runner.os == 'Linux'
+        run: |
+          docker pull "$NIGHTLY"
+          echo "TURBOREL_TEST_SERVER=docker:$NIGHTLY" >> "$GITHUB_ENV"
       - name: Every check
         timeout-minutes: 30
         run: npm run verify
@@ -50,5 +64,9 @@ jobs:
           cache: npm
       - name: Install the development dependencies
         run: npm ci
-      - name: Coverage, against its floor
+      - name: Take the nightly server
+        run: |
+          docker pull "$NIGHTLY"
+          echo "TURBOREL_TEST_SERVER=docker:$NIGHTLY" >> "$GITHUB_ENV"
+      - name: Coverage, against its floor, the live tests among them
         run: npm run coverage

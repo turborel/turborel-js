@@ -11,8 +11,9 @@
  * This is the alpha, version 0.0.0, the number of the turborel release it
  * is made for. Its Promise-based API of connections, queries, prepared
  * statements, cursors as async iterators and pools (RULES.md D2) is built
- * milestone by milestone. Until then it exports its error type and the
- * types its values are read as.
+ * milestone by milestone, over the low-level client it exports: so far
+ * its connections, by every transport and mechanism, its error type, and
+ * the values and data types its codec reads and writes.
  *
  * @packageDocumentation
  */
@@ -47,3 +48,22 @@ export type {
   TypeName,
   XmlSchemaName,
 } from './codec/types.js';
+export { Certificate, Password, Trust } from './auth/mechanism.js';
+export type { Mechanism, TlsChannel } from './auth/mechanism.js';
+export { Scram } from './auth/scram.js';
+export type { ChannelBinding, ScramOptions } from './auth/scram.js';
+export { KEY_CACHE_ENTRIES, KeyCache } from './auth/key-cache.js';
+export type { Lookups } from './auth/key-cache.js';
+export { CANCEL_WITHIN, Canceller } from './session/cancel.js';
+export * as capabilities from './session/capabilities.js';
+export { connectTo } from './session/connect.js';
+export { CONNECT_WITHIN, Connection, DEFAULT_TIMEOUTS, TERMINATE_WITHIN, VERSION } from './session/connection.js';
+export type { OpenOptions, Timeouts } from './session/connection.js';
+export { APPLICATION, KEPT_NOTICES, Offer } from './session/told.js';
+export type { Notice, NoticeHandler } from './session/told.js';
+export { channelOf } from './tls/channel.js';
+export { config, platformAuthorities, presenting, presentingTo, roots, trusting } from './tls/config.js';
+export type { TlsConfig } from './tls/config.js';
+export { FrameStream } from './transport/frames.js';
+export { DEFAULT_PIPE, DEFAULT_PORT, local, overTls, tcp } from './transport/target.js';
+export type { Target } from './transport/target.js';
