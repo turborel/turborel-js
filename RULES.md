@@ -453,9 +453,24 @@ rule here, the rule is kept:
 
 Where turborel-client's code contradicts what The Native Protocol or
 The Client Library says outright, the driver follows the documents, and
-each such place is listed here, so the reference can be fixed. At
-b40bd830 none is: the one there was, a transaction left active after
-ChangeUser, is fixed in turborel-client.
+each such place is listed here, so the reference can be fixed. Where
+turborel-client is inconsistent with itself, every Turborel driver
+follows one rule, the same in all nine, listed here too:
+
+- A reply value that cannot be decoded loses the connection, with
+  SQLCODE -919 and SQLSTATE 08006, as a malformed message does: a
+  character string's or a large object's units or kind byte other than
+  0 or 1, a truth byte other than 0 or 1, a damaged JSON document, one
+  nested past 128 or longer than 256 MiB, a malformed condition of
+  Complete's tag 17. turborel-client gives TB916 or 0A000 on some of
+  these paths and keeps the connection, the rest of the reply unread.
+- Value tags 18 and 19, the server's stored form of a large object,
+  never sent on the wire, are refused as malformed (-919, 08006), though
+  turborel-protocol's reader takes them.
+- Attributes past their bounds, more than 32 or a name or value too
+  long, are refused before they are sent (-919, 08006), and the
+  connection goes on. turborel-client sends them, and the server then
+  fails the connection.
 
 ### This driver's own
 

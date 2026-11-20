@@ -17,7 +17,7 @@ import { compressFrames, received } from '../codec/compress.js';
 import { HEADER_BYTES, MAX_BODY, decodeHeader } from '../codec/frame.js';
 import { type Reply, decodeReply } from '../codec/replies.js';
 import { type Request, encodeRequest } from '../codec/requests.js';
-import { type TurborelError, apiMisuse, connectionFailure } from '../error.js';
+import { TurborelError, apiMisuse, connectionFailure } from '../error.js';
 import type { Mechanism } from '../auth/mechanism.js';
 import type { FrameStream } from '../transport/frames.js';
 import type { Target } from '../transport/target.js';
@@ -327,7 +327,9 @@ export class Link {
       const held = received(frame, this.#compressFrom !== undefined, this.#maxBody);
       return decodeReply(held.kind, held.body);
     } catch (e) {
-      throw this.#lostBy(e as TurborelError);
+      // A reply that cannot be read, whatever failed reading it, loses the
+      // connection as a malformed message does (RULES.md D8).
+      throw this.#lostBy(e instanceof TurborelError ? e : connectionFailure(`a reply cannot be read: ${String(e)}`, e));
     }
   }
 

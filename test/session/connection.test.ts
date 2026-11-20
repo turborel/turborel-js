@@ -11,6 +11,7 @@ import { inspect } from 'node:util';
 import { Password, Trust } from '../../src/auth/mechanism.js';
 import { Scram } from '../../src/auth/scram.js';
 import { Reader } from '../../src/codec/reader.js';
+import type { Writer } from '../../src/codec/writer.js';
 import { REQUEST } from '../../src/codec/kinds.js';
 import { writeFailure } from '../../src/codec/composite.js';
 import { ALL_CAPABILITIES, COMPRESSION, PING } from '../../src/session/capabilities.js';
@@ -345,4 +346,33 @@ test('a named pipe is bounded only as it is opened', { skip: process.platform !=
   conn.setReadTimeout(50);
   assert.deepEqual(await conn.receive(), { kind: 'pong' });
   conn.destroy();
+});
+
+/** Verifies: [PROTOCOL Values] a reply value that cannot be read loses the connection (08006): a truth byte not 0 or 1, a large object's kind not 0 or 1, a damaged JSON document, value tags 18 and 19, a malformed condition of Complete's tag 17. */
+test('a reply value that cannot be read loses the connection', async () => {
+  const bad: ((w: Writer) => void)[] = [
+    (w) => w.u32(1).u32(1).u8(14).u8(2),
+    (w) => w.u32(1).u32(1).u8(20).u8(2).bytes(new Uint8Array(0)),
+    (w) => w.u32(1).u32(1).u8(25).bytes(Uint8Array.of(1, 12)),
+    (w) => w.u32(1).u32(1).u8(18),
+    (w) => w.u32(1).u32(1).u8(19),
+  ];
+  for (const rows of bad) {
+    const s = await server(async (peer) => {
+      await hello(peer);
+      peer.ready();
+      peer.reply('B', rows);
+    });
+    const conn = await connectTo(s.target, 'ann', new Trust());
+    await assert.rejects(conn.receive(), isConnectionFailure);
+    assert.equal(conn.isLost, true);
+  }
+  const s = await server(async (peer) => {
+    await hello(peer);
+    peer.ready();
+    peer.reply('K', (w) => w.i32(0).string('00000').flag(false).u8(17).u32(1).bytes(Uint8Array.of(1, 2)));
+  });
+  const conn = await connectTo(s.target, 'ann', new Trust());
+  await assert.rejects(conn.receive(), isConnectionFailure, 'a condition cut short');
+  assert.equal(conn.isLost, true);
 });
