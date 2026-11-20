@@ -164,3 +164,21 @@ export function beyondLimits(message: string): TurborelError {
 export function apiMisuse(message: string): TurborelError {
   return new TurborelError(SQLCODE_API, SQLSTATE_API, message);
 }
+
+/** SQLCODE of a value damaged, turborel's for SQLSTATE TB916. */
+export const SQLCODE_DAMAGED = -916;
+
+/** SQLSTATE TB916, a value damaged, turborel's own class TB. */
+export const SQLSTATE_DAMAGED = 'TB916';
+
+/**
+ * A value a reply holds that the driver cannot take (SQLCODE -916,
+ * SQLSTATE TB916), saying `message`: its frame read whole, so the
+ * request fails alone and the connection goes on.
+ *
+ * @param message - what is wrong
+ * @returns the failure, to be thrown
+ */
+export function damaged(message: string): TurborelError {
+  return new TurborelError(SQLCODE_DAMAGED, SQLSTATE_DAMAGED, message);
+}

@@ -105,7 +105,7 @@ function writeUnits(w: Writer, units: CharUnits): void {
  */
 function readUnits(r: Reader): CharUnits {
   const b = r.u8();
-  if (b > tag.UNITS_OCTETS) throw r.corrupt('a length counts characters, 0, or octets, 1');
+  if (b > tag.UNITS_OCTETS) throw r.damaged('a length counts characters, 0, or octets, 1');
   return b === tag.UNITS_OCTETS ? 'octets' : 'characters';
 }
 

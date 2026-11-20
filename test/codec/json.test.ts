@@ -140,7 +140,7 @@ test('JSON nests at most 128 deep', () => {
   assert.throws(() => Json.of(nested(129)), isFailure(-900, '0A000'));
   const root = [...deepest.bytes.subarray(1)];
   const wrapped = [1, 10, ...u32(1), ...u32(root.length), ...u32(0), ...root];
-  assert.throws(() => stored(wrapped), isDamage);
+  assert.throws(() => stored(wrapped), isFailure(-900, '0A000'));
 });
 
 /** Verifies: [PROTOCOL Values] a document damaged in any part is refused before anything is made of it. */

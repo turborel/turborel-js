@@ -75,10 +75,11 @@ these values, is written at milestone M3.
 
 | SQLSTATE | SQLCODE | When |
 |---|---|---|
-| 08006 | -919 | A value received malformed: a tag of no value, a large object of no kind, a CLOB not UTF-8, a UUID not of 16 octets, a DECFLOAT not in its one form, a JSON value whose tree is damaged, values nested past 16 or a multiset past 65,535 elements |
+| 08006 | -919 | A value received malformed: a tag of no value, a large object of no kind, a CLOB not UTF-8, a UUID not of 16 octets, a DECFLOAT not in its one form, values nested past 16 or a multiset past 65,535 elements |
+| TB916 | -916 | A value received that its reader cannot take, its frame read whole: a truth value or a length's units byte not 0 or 1, a JSON value whose tree is damaged, value tags 18 and 19; the statement fails alone, the rest of its replies read past, and the connection goes on |
 | 22003 | -301 | An exact number or an interval whose units are past 128 bits |
 | 22021 | -301 | A string holding a lone surrogate |
-| 0A000 | -900 | A JSON value nested past 128 levels, or longer than 256 MiB |
+| 0A000 | -900 | A JSON value nested past 128 levels, or longer than 256 MiB; one received so fails its statement alone, as TB916 does |
 | TB910 | -910 | A value of a type the protocol carries none of, `undefined` and `Date` among them, or a field out of its range |
 
 ## EXAMPLES

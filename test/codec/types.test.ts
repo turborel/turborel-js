@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import { Reader } from '../../src/codec/reader.js';
 import { type DataType, readType, writeType } from '../../src/codec/types.js';
 import { Writer } from '../../src/codec/writer.js';
-import { isConnectionFailure } from '../support/failures.js';
+import { isConnectionFailure, isFailure } from '../support/failures.js';
 
 /**
  * The bytes of `t`.
@@ -135,12 +135,11 @@ test('an interval field is numbered 0 to 5', () => {
   assert.throws(() => typeOf(Uint8Array.of(13, 0, 0, 0, 0, 6, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0)), isConnectionFailure);
 });
 
-/** Verifies: [PROTOCOL Data types] a type of no tag, or malformed parameters, fails the connection. */
+/** Verifies: [PROTOCOL Data types] a type of no tag, or malformed parameters, fails the connection; a units byte not 0 or 1 fails as a value. */
 test('a malformed type fails the connection', () => {
   const malformed: [string, number[]][] = [
     ['no such tag', [99]],
     ['tag 20, a value tag alone', [20]],
-    ['units of 2', [1, 1, 0, 0, 0, 2]],
     ['cardinality 0', [16, 0, 0, 0, 0, 14]],
     ['cardinality past 65,535', [16, 0, 0, 1, 0, 14]],
     ['a row of no fields', [17, 0, 0, 0, 0]],
@@ -158,6 +157,9 @@ test('a malformed type fails the connection', () => {
   for (const [why, bytes] of malformed) {
     assert.throws(() => typeOf(Uint8Array.from(bytes)), isConnectionFailure, why);
   }
+  // A units byte is a value its reader cannot take, as turborel's
+  // `read_units` fails it, not the frame.
+  assert.throws(() => typeOf(Uint8Array.of(1, 1, 0, 0, 0, 2)), isFailure(-916, 'TB916'), 'units of 2');
 });
 
 /** Verifies: [DESIGN] D1 types nest at most 16 deep, as turborel-protocol reads them, and deeper fails the connection. */

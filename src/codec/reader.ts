@@ -6,7 +6,7 @@
  * @packageDocumentation
  */
 
-import { type TurborelError, connectionFailure } from '../error.js';
+import { type TurborelError, connectionFailure, damaged } from '../error.js';
 import { KEY_BYTES } from './writer.js';
 
 /** The bytes of a `u32`, a `u64` and an `i128`. */
@@ -48,10 +48,21 @@ export class Reader {
   }
 
   /**
-   * The error of a malformed body, at the current byte.
+   * The failure of a value the message holds that cannot be taken, its
+   * message read whole (SQLCODE -916, SQLSTATE TB916).
    *
    * @param why - what is wrong
-   * @returns a connection failure
+   * @returns the failure, to be thrown
+   */
+  damaged(why: string): TurborelError {
+    return damaged(`a ${this.what} received holds a value that cannot be taken, at byte ${String(this.at)}: ${why}`);
+  }
+
+  /**
+   * The failure of a malformed message, at the byte this reader is at.
+   *
+   * @param why - what is wrong
+   * @returns the failure, to be thrown
    */
   corrupt(why: string): TurborelError {
     return connectionFailure(`a ${this.what} received is malformed at byte ${String(this.at)}: ${why}`);

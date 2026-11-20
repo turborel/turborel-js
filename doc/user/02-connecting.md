@@ -114,7 +114,7 @@ told it, and `settings()` all of them.
 `terminate()` ends the session, its transaction as
 SESSION.COMMIT_AT_END says, and waits for the server to close, at most
 the read timeout, else 60 seconds; a commit that fails then is given as
-the failure. `Canceller.of(conn)` gives what cancels the statement the
+the failure, any notice the server sends before it read past. `Canceller.of(conn)` gives what cancels the statement the
 connection runs, from elsewhere: `cancel()` reaches the server again,
 as the connection did, and the statement fails with SQLCODE -920
 (SQLSTATE TB920).

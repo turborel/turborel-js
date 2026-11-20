@@ -66,8 +66,11 @@ it binds the mechanism to the connection's channel before the login.
 and `isTls` say how a target is reached. `Connection.open` logs in over a
 stream the program opened itself, a
 `FrameStream` of its socket; a TLS stream's channel is bound by
-`mechanism.bind(channelOf(socket))` first. Such a connection cannot be
-reached again, so has no canceller.
+`mechanism.bind(channelOf(socket))` first. It is bounded as
+`options.timeouts` says, its read timeout set later by `setReadTimeout`
+as any connection's; with `options.boundedReads` false, its reads after
+the login wait as long as they must, as its maker set the stream. Such
+a connection cannot be reached again, so has no canceller.
 
 A connection keeps the session's authorization identifier, the
 server's product, the capabilities granted in the protocol's order,
@@ -89,8 +92,10 @@ The statements a connection runs are on
 [Statements and Cursors](22-statements.md).
 
 `terminate` ends the session, its transaction as SESSION.COMMIT_AT_END
-says, waiting for the server to close at most the read timeout, else
-60 seconds. `destroy` closes the connection at once. `Canceller.cancel`
+says, a failing commit's failure given, a Notice or Status before it
+read past. It waits for the server to close at most the read timeout,
+else 60 seconds; on a stream opened with `boundedReads` false, as long
+as it must. `destroy` closes the connection at once. `Canceller.cancel`
 sends the session's cancel key over a connection of its own, giving up
 after 10 seconds unless told; the statement fails with SQLCODE -920.
 The cancel key is never shown by a connection's or a canceller's
@@ -102,7 +107,7 @@ display form.
 |---|---|---|
 | 28000 | -919 | A password or SCRAM over plain TCP, refused before connecting; credentials the server refused, as the connection is made or its user changed; a SCRAM exchange whose server did not prove itself, or not bound under `require` |
 | 08004 | -919 | The server refused the connection, as of a protocol version it does not speak |
-| 08006 | -919 | No connection made, in time; a TLS handshake that failed, as of a server no authority trusted vouches for; a wait that ran out; a reply longer than taken; a request of a capability not granted |
+| 08006 | -919 | No connection made, in time; a TLS handshake that failed, as of a server no authority trusted vouches for; a wait that ran out; a reply longer than taken, or a frame malformed; a request of a capability not granted |
 | TB920 | -920 | The statement was cancelled |
 
 ## EXAMPLES

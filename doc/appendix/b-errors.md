@@ -26,13 +26,13 @@ Appendix A, SQLSTATE and SQLCODE, lists every one the server sends.
 | 28 | Invalid authorization specification | Credentials refused, which lose a connection being made or changing user |
 | 2A | Syntax error or access rule violation | A statement the server cannot read, or names what is not there |
 | 40 | Transaction rollback | A commit that failed, the transaction rolled back, as 40002 |
-| TB | turborel's own | As TB910, an argument the driver does not take, and TB920, a statement cancelled |
+| TB | turborel's own | As TB910, an argument the driver does not take, TB916, a value received it cannot take, and TB920, a statement cancelled |
 
 ## The failures the driver raises
 
 | SQLSTATE | SQLCODE | When |
 |---|---|---|
-| 08006 | -919 | No connection made, in time; a wait that ran out; a message that cannot be read; a reply out of turn; a request of a capability not granted, refused before it is sent |
+| 08006 | -919 | No connection made, in time; a wait that ran out; a frame that cannot be read; a reply out of turn; a request of a capability not granted, refused before it is sent |
 | 08001 | -919 | Settings that cannot be read, or name no user; a service file that cannot be read, or has no section of the name; no server kept of several, or one not of the role asked |
 | 08006 | -919 | Attributes past their bounds, refused before they are sent, the connection kept: the code the server would fail the connection with |
 | 28000 | -919 | A password or SCRAM over plain TCP, refused before connecting; a SCRAM exchange whose server did not prove itself; channel binding required that cannot be |
@@ -41,7 +41,8 @@ Appendix A, SQLSTATE and SQLCODE, lists every one the server sends.
 | 22001 | -301 | A string an import assigns to a character column that is too long for it |
 | 22003 | -301 | A number past what the protocol carries |
 | 22021 | -301 | A string holding a lone surrogate |
-| 0A000 | -900 | A value past turborel's limits, as a JSON value nested past 128 levels |
+| 0A000 | -900 | A value past turborel's limits, as a JSON value nested past 128 levels, sent or received |
+| TB916 | -916 | A value a reply holds that the driver cannot take, its frame read whole: a truth value or a length's units byte not 0 or 1, a damaged JSON value, a malformed condition of Complete's tag 17, value tags 18 and 19 |
 | TB910 | -910 | An argument of a type or range the driver does not take; another request while a copy is under way |
 
 ## The failures that end the connection
@@ -52,7 +53,10 @@ the driver meets reading or writing the connection, and after
 credentials refused (SQLCODE -919, class 28) as the connection is made
 or its user changed; `isLost` then says so, and every request fails
 with the failure that lost it. A request of a capability not granted is
-refused with 08006 before it is sent, and the connection goes on. A statement's failure, of severity ERROR, leaves the session
+refused with 08006 before it is sent, and the connection goes on. A
+reply that holds a value the driver cannot take, TB916 or 0A000, fails
+its request alone: the rest of the request's replies are read past to
+its last, and the connection goes on. A statement's failure, of severity ERROR, leaves the session
 going on, its `active` saying whether its transaction is still active.
 
 ## The server's own SQLSTATEs of the protocol

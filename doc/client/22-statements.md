@@ -89,6 +89,7 @@ and Execute carries, once the server granted `query-attributes`.
 | 26000 | -921 | A statement deallocated, or never prepared |
 | 08006 | -919 | A request of a capability not granted, refused before it is sent; a reply out of turn, which loses the connection |
 | 2200W | -301 | An XML value with no serialization, as the fetch that sends it fails |
+| TB916 | -916 | A reply holding a value the driver cannot take: the statement fails, the rest of its replies read past first, and the connection goes on ([Values](23-values.md)) |
 
 The statement's own failures are the server's, as it reports them.
 

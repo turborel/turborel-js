@@ -27,8 +27,12 @@ const KINDS = [...new TextEncoder().encode('CRPDBSKELNTGQz'), 0];
 /** How many cases each property takes. */
 const CASES = 3000;
 
+/** The failures a reply may decode to: a malformed frame, a value that cannot be taken, a value past a limit. */
+const FAILURES = new Set(['-919 08006', '-916 TB916', '-900 0A000']);
+
 /**
- * Checks that `decode` gives something or fails the connection, nothing else.
+ * Checks that `decode` gives something, or fails the connection, or fails
+ * as a value that cannot be taken does, nothing else.
  *
  * @param decode - the decoding to try
  */
@@ -37,7 +41,7 @@ function decodesOrFails(decode: () => unknown): void {
     decode();
   } catch (e) {
     assert.ok(e instanceof TurborelError, String(e));
-    assert.deepEqual([e.sqlcode, e.sqlstate], [-919, '08006'], e.message);
+    assert.ok(FAILURES.has(`${String(e.sqlcode)} ${e.sqlstate}`), e.message);
   }
 }
 
@@ -82,8 +86,8 @@ function validReplies(): [number, Uint8Array][] {
   ];
 }
 
-/** Verifies: [PROTOCOL Errors and notices] random bodies of every reply's kind decode or fail the connection, never anything else. */
-test('random replies decode or fail the connection', () => {
+/** Verifies: [PROTOCOL Errors and notices] random bodies of every reply's kind decode, fail the connection or fail as a value, never anything else. */
+test('random replies decode, fail the connection or fail as a value', () => {
   const cases = new Cases(0x7e57_0001);
   for (let i = 0; i < CASES; i += 1) {
     const kind = KINDS[cases.below(KINDS.length)] ?? 0;
@@ -92,8 +96,8 @@ test('random replies decode or fail the connection', () => {
   }
 });
 
-/** Verifies: [PROTOCOL Errors and notices] valid replies changed in one place decode or fail the connection, never anything else. */
-test('mutated replies decode or fail the connection', () => {
+/** Verifies: [PROTOCOL Errors and notices] valid replies changed in one place decode, fail the connection or fail as a value, never anything else. */
+test('mutated replies decode, fail the connection or fail as a value', () => {
   const cases = new Cases(0x7e57_0002);
   const valid = validReplies();
   for (const [kind, body] of valid) assert.doesNotThrow(() => decodeReply(kind, body));

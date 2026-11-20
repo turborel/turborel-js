@@ -23,6 +23,7 @@
 import { DecFloat } from './decfloat.js';
 import { Decimal } from './decimal.js';
 import { Datetime, type Moment } from './values.js';
+import { beyondLimits } from '../error.js';
 
 /** The version of the format, the first octet of every document. */
 export const FORMAT_VERSION = 1;
@@ -284,7 +285,7 @@ class Node {
  * @throws JsonDamage if it is damaged
  */
 function check(node: Node, depth: number): number {
-  if (depth > MAX_JSON_NESTING) throw new JsonDamage('arrays and objects nest too deep');
+  if (depth > MAX_JSON_NESTING) throw beyondLimits('arrays and objects of a JSON value nest deeper than 128');
   const length = node.length();
   node.reach(0, length);
   switch (node.tag) {

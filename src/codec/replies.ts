@@ -20,7 +20,7 @@ import { LOB_REPLY, REPLY } from './kinds.js';
 import { Reader } from './reader.js';
 import { CONDITIONS, GENERATED, MORE, POSITION, ROWS, TIME, Tail } from './tail.js';
 import type { Value } from './values.js';
-import { type Diagnostics, type TurborelError, connectionFailure } from '../error.js';
+import { type Diagnostics, TurborelError, connectionFailure } from '../error.js';
 
 /** The server's time for a statement, in microseconds (`[PROTOCOL Complete 'K']`, tag 18). */
 export interface Timing {
@@ -91,9 +91,17 @@ const COMPLETE_TAGS: readonly number[] = [POSITION, MORE, ROWS, GENERATED, CONDI
  */
 function readCondition(r: Reader): TurborelError {
   const inner = new Reader(r.bytesField(), 'condition');
-  const condition = readFailure(inner);
-  inner.finish();
-  return condition;
+  try {
+    const condition = readFailure(inner);
+    inner.finish();
+    return condition;
+  } catch (e) {
+    // A condition's bytes are a field of the Complete, read whole by
+    // their count: one that cannot be taken is a value's failure.
+    throw e instanceof TurborelError && !e.sqlstate.startsWith('08')
+      ? e
+      : r.damaged(`a condition cannot be read: ${(e as Error).message}`);
+  }
 }
 
 /** A completion's tail as it is read, every field mutable until the end. */
@@ -181,6 +189,57 @@ const READERS: Readonly<Partial<Record<number, (r: Reader) => Reply>>> = {
   [REPLY.STATUS]: (r) => ({ kind: 'status', name: r.string(), value: r.string() }),
   [REPLY.PONG]: () => ({ kind: 'pong' }),
 };
+
+/**
+ * Whether a reply of `kind` and `body`, decoded or not, is the last its
+ * request is answered with, by the order of a statement's replies, as
+ * turborel-protocol's `ends_request` tells it: a Description, Rows, a
+ * Notice or a Status has more after it; a Complete has if its tail says
+ * more (tag 5); any other reply ends its request's.
+ *
+ * @param kind - its kind
+ * @param body - its body
+ * @returns true if no reply of its request follows
+ */
+export function endsRequest(kind: number, body: Uint8Array): boolean {
+  if (kind === REPLY.DESCRIPTION || kind === REPLY.ROWS || kind === REPLY.NOTICE || kind === REPLY.STATUS) return false;
+  if (kind !== REPLY.COMPLETE) return true;
+  return completedHead(kind, body)?.more !== true;
+}
+
+/**
+ * The head of a Complete whose head reads, as turborel-protocol's
+ * `completed_head` reads it: its SQLCODE, SQLSTATE and whether a
+ * transaction is active, and of its tail the commit's position and
+ * whether more replies follow, which come before any field a client may
+ * fail to take.
+ *
+ * @param kind - the reply's kind
+ * @param body - its body
+ * @returns the head, or undefined if it is no Complete, or its head does not read
+ */
+export function completedHead(kind: number, body: Uint8Array): Completion | undefined {
+  if (kind !== REPLY.COMPLETE) return undefined;
+  try {
+    const r = new Reader(body, 'reply');
+    const head: Found & { sqlcode: number; sqlstate: string; active: boolean } = {
+      sqlcode: r.i32(),
+      sqlstate: r.string(),
+      active: r.flag(),
+      more: false,
+      generated: [],
+      conditions: [],
+    };
+    const tail = new Tail(COMPLETE_TAGS);
+    for (let t = tail.next(r); t === POSITION || t === MORE; t = tail.next(r)) {
+      if (t === POSITION) head.position = r.u64();
+      else head.more = true;
+    }
+    return head;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * The reply of kind `kind` whose body is `body`.

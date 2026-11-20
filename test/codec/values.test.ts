@@ -92,7 +92,7 @@ test('the plain values', () => {
   assert.deepEqual(bytesOf(true), Uint8Array.of(14, 1));
   assert.deepEqual(bytesOf(Uint8Array.of(0xab, 0)), Uint8Array.of(6, 2, 0, 0, 0, 0xab, 0));
   for (const v of [null, '', 'abcd', false, true, new Uint8Array(0), Uint8Array.of(0xab, 0, 0xc0)]) roundTrip(v);
-  assert.throws(() => valueOf([14, 2]), isConnectionFailure, 'a truth value of 2');
+  assert.throws(() => valueOf([14, 2]), isFailure(-916, 'TB916'), 'a truth value of 2');
 });
 
 /** Verifies: [PROTOCOL Values] an approximate number keeps its double's bits: -0.0, NaN, the largest and the least. */
@@ -227,19 +227,22 @@ test('plug-in values travel unchanged', () => {
   assert.equal(String(point), '(1, 2)');
 });
 
-/** Verifies: [PROTOCOL Values] a JSON value is tag 25 and its stored form as bytes; damaged octets fail the connection (CONFORMANCE.md G3). */
+/** Verifies: [PROTOCOL Values] a JSON value is tag 25 and its stored form as bytes; damaged octets fail as a value that cannot be taken (TB916), not the connection (CONFORMANCE.md G3). */
 test('JSON values travel as their tree', () => {
   const doc = Json.of({ a: 1n });
   assert.deepEqual(bytesOf(doc).subarray(0, 6), Uint8Array.of(25, doc.bytes.byteLength, 0, 0, 0, 1));
   roundTrip(doc);
-  assert.throws(() => valueOf([25, 2, 0, 0, 0, 2, 0]), isConnectionFailure, 'version 2');
-  assert.throws(() => valueOf([25, 1, 0, 0, 0, 1]), isConnectionFailure, 'no root');
+  assert.throws(() => valueOf([25, 2, 0, 0, 0, 2, 0]), isFailure(-916, 'TB916'), 'version 2');
+  assert.throws(() => valueOf([25, 1, 0, 0, 0, 1]), isFailure(-916, 'TB916'), 'no root');
 });
 
-/** Verifies: [PROTOCOL Values] a tag of no value fails the connection; a JavaScript value the protocol carries none of is never written. */
+/** Verifies: [PROTOCOL Values] a tag of no value fails the connection; tags 18 and 19, a large object's stored form, fail as a value that cannot be taken (RULES.md D8); a JavaScript value the protocol carries none of is never written. */
 test('values of no tag are refused', () => {
-  for (const t of [5, 7, 10, 12, 18, 19, 28, 99]) {
+  for (const t of [28, 99]) {
     assert.throws(() => valueOf([t]), isConnectionFailure, String(t));
+  }
+  for (const t of [18, 19]) {
+    assert.throws(() => valueOf([t]), isFailure(-916, 'TB916'), String(t));
   }
   for (const v of [undefined, new Date(0), new Map(), Symbol('x'), () => 1]) {
     assert.throws(() => bytesOf(v as unknown as Value), isFailure(-910, 'TB910'));

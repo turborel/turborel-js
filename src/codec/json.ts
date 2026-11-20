@@ -76,7 +76,7 @@ export class Json {
    *
    * @param bytes - the stored form
    * @returns it
-   * @throws JsonDamage if the octets are no document of the format
+   * @throws JsonDamage if the octets are no document of the format; {@link TurborelError} 0A000 if its arrays and objects nest deeper than 128
    */
   static ofBytes(bytes: Uint8Array): Json {
     decodeDocument(bytes);

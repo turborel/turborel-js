@@ -11,16 +11,19 @@
  */
 
 import * as cap from './capabilities.js';
+import { capabilitiesOf, endsConnection } from './requests.js';
 import type { Offer } from './told.js';
 import { type Notice, type NoticeHandler, Told } from './told.js';
 import { compressFrames, received } from '../codec/compress.js';
 import { HEADER_BYTES, MAX_BODY, decodeHeader } from '../codec/frame.js';
-import { type Reply, decodeReply } from '../codec/replies.js';
+import { type Reply, completedHead, decodeReply, endsRequest } from '../codec/replies.js';
 import { type Request, encodeRequest } from '../codec/requests.js';
 import { TurborelError, apiMisuse, connectionFailure } from '../error.js';
 import type { Mechanism } from '../auth/mechanism.js';
 import type { FrameStream } from '../transport/frames.js';
 import type { Target } from '../transport/target.js';
+
+export { capabilitiesOf, endsConnection } from './requests.js';
 
 /** The protocol's version, Hello's first field. */
 export const VERSION = 1;
@@ -31,16 +34,8 @@ export const CONNECT_WITHIN = 30_000;
 /** How long Terminate waits for the server to close, if the read timeout sets no limit: 60 seconds. */
 export const TERMINATE_WITHIN = 60_000;
 
-/** The SQLSTATE class of a connection exception, which loses the connection. */
-const CONNECTION_CLASS = '08';
-/** SQLSTATE 08003, connection does not exist, which names another connection and loses none. */
-const ANOTHER_CONNECTION = '08003';
-/** The SQLSTATE class of invalid authorization, which loses a connection being made. */
-const AUTHORIZATION_CLASS = '28';
 /** The SQLSTATE class of a warning. */
 const WARNING_CLASS = '01';
-/** SQLCODE of a connection exception. */
-const SQLCODE_CONNECTION = -919;
 
 /** How long a connection waits on its server, in milliseconds; undefined for no limit. */
 export interface Timeouts {
@@ -67,49 +62,6 @@ export interface OpenOptions {
 
 /** The requests a client sends while a copy is under way, until its CopyEnd. */
 const DURING_COPY: ReadonlySet<Request['kind']> = new Set(['copyData', 'copyEnd', 'ping']);
-
-/** The capability each request with one needs, by its kind. */
-const NEEDED: Readonly<Partial<Record<Request['kind'], string>>> = {
-  describe: cap.DESCRIBE,
-  ping: cap.PING,
-  reset: cap.RESET,
-  changeUser: cap.CHANGE_USER,
-  copyIn: cap.COPY,
-  copyData: cap.COPY,
-  copyEnd: cap.COPY,
-};
-
-/**
- * The capabilities `request` needs granted, its tail fields' among them.
- *
- * @param request - the request
- * @returns their names
- */
-export function capabilitiesOf(request: Request): string[] {
-  const needed: string[] = [];
-  const own = NEEDED[request.kind];
-  if (own !== undefined) needed.push(own);
-  if ((request.kind === 'query' || request.kind === 'execute') && request.attributes.length > 0)
-    needed.push(cap.QUERY_ATTRIBUTES);
-  if (request.kind === 'query' && request.multi) needed.push(cap.MULTI_STATEMENT);
-  if ((request.kind === 'execute' || request.kind === 'fetch' || request.kind === 'close') && request.cursor !== 0) {
-    needed.push(cap.CURSORS);
-  }
-  return needed;
-}
-
-/**
- * Whether `failure` loses the connection it came on: a connection
- * exception but 08003, or credentials refused as the connection is made.
- *
- * @param failure - the failure
- * @returns true if the server closes the connection after it
- */
-export function endsConnection(failure: TurborelError): boolean {
-  const another = failure.sqlstate === ANOTHER_CONNECTION;
-  const connecting = failure.sqlcode === SQLCODE_CONNECTION && failure.sqlstate.startsWith(AUTHORIZATION_CLASS);
-  return (failure.sqlstate.startsWith(CONNECTION_CLASS) && !another) || connecting;
-}
 
 /** A session of a server's, over one connection: its frames, its login and what the server told. */
 export class Link {
@@ -225,8 +177,6 @@ export class Link {
       } else if (reply.kind === 'ready') {
         mechanism.ready();
         [this.#authorization, this.#key, this.#server] = [reply.authorization, reply.key, reply.server];
-        // Renewed as a reset renews it: no transaction is active.
-        [this.#active, this.#warning] = [false, undefined];
         return;
       } else if (reply.kind === 'error') {
         throw this.#failed(reply.failure);
@@ -306,30 +256,86 @@ export class Link {
   /**
    * The server's next reply, each Notice and Status before it taken, a
    * compressed one inflated, a failure that ends the connection losing it.
+   * A reply that holds a value the driver cannot take, its frame read
+   * whole, fails its request alone: the rest of the request's replies are
+   * read past first, unless `answer` says the request is answered by one
+   * reply, and the connection goes on.
    *
+   * @param answer - `replies`, of a request answered in a statement's order, by default; or `one`, by one reply
    * @returns the reply
-   * @throws {@link TurborelError} 08006 if the connection is lost or a reply is malformed
+   * @throws {@link TurborelError} 08006 if the connection is lost or a frame is malformed; TB916, or 0A000, for a value that cannot be taken
    */
-  async receive(): Promise<Reply> {
+  async receive(answer: 'replies' | 'one' = 'replies'): Promise<Reply> {
     for (;;) {
-      const reply = await this.#next();
-      if (reply.kind === 'notice') this.told.notice(noticeOf(reply));
-      else if (reply.kind === 'status') this.told.settings.set(reply.name, reply.value);
-      else return this.#noted(reply);
+      const [kind, body] = await this.#frame();
+      let reply: Reply;
+      try {
+        reply = decodeReply(kind, body);
+      } catch (e) {
+        const failure = this.#skipped(kind, body, e);
+        if (answer === 'replies') await this.#drained(kind, body);
+        throw failure;
+      }
+      const took = this.#took(reply);
+      if (took !== undefined) return took;
     }
   }
 
-  /** @returns the next reply decoded, inflated first if compressed and compression was granted */
-  async #next(): Promise<Reply> {
+  /**
+   * `reply`, unless it is a Notice or a Status, which is taken; a reply of a statement, its end noted.
+   *
+   * @param reply - the reply
+   * @returns it, or undefined if it was taken
+   */
+  #took(reply: Reply): Reply | undefined {
+    if (reply.kind === 'notice') this.told.notice(noticeOf(reply));
+    else if (reply.kind === 'status') this.told.settings.set(reply.name, reply.value);
+    else return this.#noted(reply);
+    return undefined;
+  }
+
+  /** @returns the next frame's kind and body, inflated first if compressed and compression was granted */
+  async #frame(): Promise<[number, Uint8Array]> {
     if (this.#lost !== undefined) throw this.#lost;
     try {
       const frame = await this.#stream.next(this.#maxBody, this.#wait());
       const held = received(frame, this.#compressFrom !== undefined, this.#maxBody);
-      return decodeReply(held.kind, held.body);
+      return [held.kind, held.body];
     } catch (e) {
-      // A reply that cannot be read, whatever failed reading it, loses the
-      // connection as a malformed message does (RULES.md D8).
       throw this.#lostBy(e instanceof TurborelError ? e : connectionFailure(`a reply cannot be read: ${String(e)}`, e));
+    }
+  }
+
+  /**
+   * Takes a frame that did not decode: a malformed one loses the connection; one holding a value that cannot be taken does not, a Complete's head noted as its whole would be.
+   *
+   * @param kind - its kind
+   * @param body - its body
+   * @param e - why it did not decode
+   * @returns the failure
+   */
+  #skipped(kind: number, body: Uint8Array, e: unknown): TurborelError {
+    const failure = e instanceof TurborelError ? e : connectionFailure(`a reply cannot be read: ${String(e)}`, e);
+    if (endsConnection(failure)) throw this.#lostBy(failure);
+    const head = completedHead(kind, body);
+    if (head !== undefined) this.#noted({ kind: 'complete', completion: head });
+    return failure;
+  }
+
+  /**
+   * Reads past the rest of a request's replies once one held a value that cannot be taken, up to the one that ends them, each taken or skipped as the first was.
+   *
+   * @param kind - the first's kind
+   * @param body - its body
+   */
+  async #drained(kind: number, body: Uint8Array): Promise<void> {
+    for (let [k, b] = [kind, body]; !endsRequest(k, b);) {
+      [k, b] = await this.#frame();
+      try {
+        this.#took(decodeReply(k, b));
+      } catch (e) {
+        this.#skipped(k, b, e);
+      }
     }
   }
 
@@ -347,6 +353,9 @@ export class Link {
       this.told.completed = c;
     } else if (reply.kind === 'error') [this.#active, this.#warning] = [reply.failure.active, undefined];
     else if (reply.kind === 'description') [this.#active, this.#warning] = [true, undefined];
+    // Ready ends a login or a change of user, which renews the session as a
+    // reset does.
+    else if (reply.kind === 'ready') [this.#active, this.#warning] = [false, undefined];
     // A locator is valid within a transaction alone.
     else if (
       reply.kind === 'rows' ||
@@ -516,21 +525,30 @@ export class Link {
 
   /**
    * Ends the connection, once the server has ended its session as
-   * SESSION.COMMIT_AT_END says and closed it, waiting at most the read
-   * timeout, else 60 seconds.
+   * SESSION.COMMIT_AT_END says and closed it, a Notice or a Status before
+   * its Error read past: waiting at most the read timeout, else 60
+   * seconds, on a stream whose reads are bounded; on one opened unbounded,
+   * as a named pipe is, as long as it must, as its maker set it.
    *
    * @throws {@link TurborelError} the server's failure, as a commit that fails as the session ends; 08006 if it does not close in time
    */
   async terminate(): Promise<void> {
     await this.#send({ kind: 'terminate' });
-    const rest = await this.#stream.closed(this.#maxBody, this.#timeouts.read ?? TERMINATE_WITHIN);
+    const within = this.#boundedReads ? (this.#timeouts.read ?? TERMINATE_WITHIN) : undefined;
+    const rest = await this.#stream.closed(this.#maxBody, within);
     this.#lost ??= connectionFailure('the connection was terminated');
-    if (rest.byteLength < HEADER_BYTES) return;
-    const { kind, length } = decodeHeader(rest.subarray(0, HEADER_BYTES), this.#maxBody);
-    const reply = decodeReply(kind, rest.subarray(HEADER_BYTES, HEADER_BYTES + length));
-    if (reply.kind === 'error') throw reply.failure;
-    if (reply.kind !== 'notice' && reply.kind !== 'status' && reply.kind !== 'pong') {
-      throw connectionFailure('the server answered Terminate');
+    // A Notice or a Status comes before the session's end is told, an
+    // Error if its commit failed: read a frame at a time, to the end.
+    for (let at = 0; rest.byteLength - at >= HEADER_BYTES;) {
+      const { kind, length } = decodeHeader(rest.subarray(at, at + HEADER_BYTES), this.#maxBody);
+      const body = rest.subarray(at + HEADER_BYTES, at + HEADER_BYTES + length);
+      if (body.byteLength < length) throw connectionFailure('the server closed within a reply to Terminate');
+      at += HEADER_BYTES + length;
+      const reply = decodeReply(kind, body);
+      if (reply.kind === 'error') throw reply.failure;
+      if (reply.kind !== 'notice' && reply.kind !== 'status' && reply.kind !== 'pong') {
+        throw connectionFailure('the server answered Terminate');
+      }
     }
   }
 

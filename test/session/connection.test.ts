@@ -348,31 +348,151 @@ test('a named pipe is bounded only as it is opened', { skip: process.platform !=
   conn.destroy();
 });
 
-/** Verifies: [PROTOCOL Values] a reply value that cannot be read loses the connection (08006): a truth byte not 0 or 1, a large object's kind not 0 or 1, a damaged JSON document, value tags 18 and 19, a malformed condition of Complete's tag 17. */
-test('a reply value that cannot be read loses the connection', async () => {
-  const bad: ((w: Writer) => void)[] = [
-    (w) => w.u32(1).u32(1).u8(14).u8(2),
-    (w) => w.u32(1).u32(1).u8(20).u8(2).bytes(new Uint8Array(0)),
-    (w) => w.u32(1).u32(1).u8(25).bytes(Uint8Array.of(1, 12)),
-    (w) => w.u32(1).u32(1).u8(18),
-    (w) => w.u32(1).u32(1).u8(19),
+/**
+ * The octets of `n`, a `u32` little-endian.
+ *
+ * @param n - the number
+ * @returns its four octets
+ */
+const u32le = (n: number): number[] => [n & 0xff, (n >>> 8) & 0xff, (n >>> 16) & 0xff, n >>> 24];
+
+/** Writes a Complete of no data, the reply a statement after a failed one takes as its own. */
+const noData = (w: Writer): void => {
+  w.i32(100).string('02000').flag(false);
+};
+
+/**
+ * Writes a Complete whose one condition is malformed, saying more replies follow if `more`.
+ *
+ * @param more - whether its tail carries tag 5
+ * @param active - whether a transaction is active after it
+ * @returns its writer
+ */
+const badCondition =
+  (more: boolean, active = false) =>
+  (w: Writer): void => {
+    w.i32(0).string('00000').flag(active);
+    if (more) w.u8(5);
+    w.u8(17).u32(1).bytes(Uint8Array.of(0xff));
+  };
+
+/** A statement's replies, each its kind and body. */
+type Replies = [string, (w: Writer) => void][];
+
+/**
+ * Writes Rows of one row of one value, `value` its octets.
+ *
+ * @param value - the value's octets, its tag first
+ * @returns its writer
+ */
+const rowOf =
+  (...value: number[]) =>
+  (w: Writer): void => {
+    w.u32(1).u32(1).raw(Uint8Array.from(value));
+  };
+
+/**
+ * A query's replies: a Description of `columns`, then Rows of each of `rows`, then a Complete.
+ *
+ * @param rows - each row's one value
+ * @param columns - writes the Description, of no columns by default
+ * @returns the replies
+ */
+function queried(rows: number[][], columns: (w: Writer) => void = (w) => w.u32(0)): Replies {
+  return [['D', columns], ...rows.map((v): [string, (w: Writer) => void] => ['B', rowOf(...v)]), ['K', noData]];
+}
+
+/** @returns each reply holding a value the driver cannot take: what it is, its statement's replies, and the SQLSTATE it fails with */
+function badValues(): [string, Replies, string][] {
+  let deep: number[] = [0];
+  for (let i = 0; i < 129; i += 1) deep = [10, 1, 0, 0, 0, ...u32le(deep.length), 0, 0, 0, 0, ...deep];
+  const units = (w: Writer): void => {
+    w.u32(1).flag(true).string('C').u8(1).u32(1).u8(9).flag(false);
+  };
+  return [
+    [
+      'a truth byte of 2',
+      queried([
+        [14, 2],
+        [14, 1],
+      ]),
+      'TB916',
+    ],
+    ['damaged JSON', queried([[25, 2, 0, 0, 0, 1, 12]]), 'TB916'],
+    ['JSON too deep', queried([[25, ...u32le(deep.length + 1), 1, ...deep]]), '0A000'],
+    ['a units byte of 9', queried([[14, 1]], units), 'TB916'],
+    ['value tag 18', queried([[18]]), 'TB916'],
+    ['value tag 19', queried([[19]]), 'TB916'],
+    ['a malformed condition', [['K', badCondition(false)]], 'TB916'],
+    [
+      'a condition, more to come',
+      [
+        ['K', badCondition(true)],
+        ['K', noData],
+      ],
+      'TB916',
+    ],
   ];
-  for (const rows of bad) {
+}
+
+/** Verifies: [PROTOCOL Values and fields] [CLIENT Running statements] a reply whose frame is whole but holds a value the driver cannot take, a truth byte not 0 or 1, damaged JSON, JSON nested past 128, a units byte not 0 or 1, value tags 18 and 19 or a malformed condition, fails its request alone with the value's error (TB916, or 0A000 past a limit), the rest of its replies read past, so the next request takes its own reply and the connection goes on. */
+test('a reply value that cannot be taken fails its request alone', async () => {
+  for (const [why, replies, sqlstate] of badValues()) {
     const s = await server(async (peer) => {
       await hello(peer);
       peer.ready();
-      peer.reply('B', rows);
+      for (const [kind, body] of replies) peer.reply(kind, body);
+      peer.reply('K', (w) => w.i32(100).string('02000').flag(false).u8(4).u64(9n));
     });
     const conn = await connectTo(s.target, 'ann', new Trust());
-    await assert.rejects(conn.receive(), isConnectionFailure);
-    assert.equal(conn.isLost, true);
+    // A Description that reads comes first; the reply holding the bad value fails.
+    const failing = async (): Promise<void> => {
+      for (;;) assert.equal((await conn.receive()).kind, 'description', why);
+    };
+    await assert.rejects(failing(), (e) => e instanceof TurborelError && e.sqlstate === sqlstate, why);
+    assert.equal(conn.isLost, false, why);
+    const own = await conn.receive();
+    assert.ok(own.kind === 'complete' && own.completion.position === 9n, `${why}: the next request's own reply`);
+    conn.destroy();
   }
+});
+
+/** Verifies: [PROTOCOL Values and fields] a request answered by one reply, as a Describe of a cursor, reads nothing past one holding a value that cannot be taken; a Complete whose condition cannot be read still tells whether a transaction is active. */
+test('a bad value of a lone reply reads nothing past it', async () => {
   const s = await server(async (peer) => {
     await hello(peer);
     peer.ready();
-    peer.reply('K', (w) => w.i32(0).string('00000').flag(false).u8(17).u32(1).bytes(Uint8Array.of(1, 2)));
+    peer.reply('D', (w) => w.u32(1).flag(false).u8(1).u32(1).u8(9).flag(false));
+    peer.reply('K', noData);
+    peer.reply('K', badCondition(false, true));
   });
   const conn = await connectTo(s.target, 'ann', new Trust());
-  await assert.rejects(conn.receive(), isConnectionFailure, 'a condition cut short');
-  assert.equal(conn.isLost, true);
+  await assert.rejects(conn.receive('one'), isFailure(-916, 'TB916'));
+  const own = await conn.receive();
+  assert.ok(own.kind === 'complete' && own.completion.sqlcode === 100, 'its own reply');
+  await assert.rejects(conn.receive(), isFailure(-916, 'TB916'));
+  assert.equal(conn.inTransaction, true, "as the Complete's head said");
+  conn.destroy();
+});
+
+/** Verifies: [PROTOCOL Values and fields] a malformed frame loses the connection (08006): a large object's kind not 0 or 1, a flag not 0 or 1, bytes after its last field, a condition's count past what follows; and the next request is told so. */
+test('a malformed frame loses the connection', async () => {
+  const bad: [string, string, (w: Writer) => void][] = [
+    ["a large object's kind of 2", 'B', (w) => w.u32(1).u32(1).u8(20).u8(2).bytes(new Uint8Array(0))],
+    ['a flag of 2', 'K', (w) => w.i32(0).string('00000').u8(2)],
+    ['a byte past its end', 'K', (w) => w.i32(0).string('00000').flag(false).u8(0)],
+    ['the conditions cut short', 'K', (w) => w.i32(0).string('00000').flag(false).u8(17).u32(1).u32(4).u8(0)],
+  ];
+  for (const [why, kind, body] of bad) {
+    const s = await server(async (peer) => {
+      await hello(peer);
+      peer.ready();
+      peer.reply(kind, body);
+      peer.reply('K', noData);
+    });
+    const conn = await connectTo(s.target, 'ann', new Trust());
+    await assert.rejects(conn.receive(), isConnectionFailure, why);
+    assert.equal(conn.isLost, true, why);
+    await assert.rejects(conn.receive(), isConnectionFailure, `${why}: told so after`);
+  }
 });

@@ -291,7 +291,8 @@ export class Runner extends Link {
    */
   async describeCursor(statement: Statement, cursor = 0): Promise<readonly Column[]> {
     await this.send({ kind: 'describe', what: 'cursor', statement: statement.number, cursor });
-    const reply = await this.receive();
+    // Answered by a Description alone, which no rows follow.
+    const reply = await this.receive('one');
     if (reply.kind === 'description') return reply.columns;
     throw this.unexpected(reply, 'the server sent no Description');
   }

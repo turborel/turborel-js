@@ -12,7 +12,7 @@ import { type Reply, decodeReply } from '../../src/codec/replies.js';
 import { writeType } from '../../src/codec/types.js';
 import { Writer } from '../../src/codec/writer.js';
 import { TurborelError } from '../../src/error.js';
-import { isConnectionFailure } from '../support/failures.js';
+import { isConnectionFailure, isFailure } from '../support/failures.js';
 
 /**
  * The bytes of a string field: its length, then its UTF-8.
@@ -158,10 +158,18 @@ test('a tail out of place fails', () => {
     ["a failure's tag", [...COMPLETE, 7]],
     ['a tag no reply has', [...COMPLETE, 19]],
     ['a generated value cut short', [...COMPLETE, 16, 1, 0, 0, 0, 1, 0, 0, 0]],
-    ['a condition cut short', [...COMPLETE, 17, 1, 0, 0, 0, 1, 0, 0, 0, 0]],
+    ['the conditions cut short', [...COMPLETE, 17, 1, 0, 0, 0, 2, 0, 0, 0, 0]],
   ];
   for (const [why, body] of bad) {
     assert.throws(() => reply('K', body), isConnectionFailure, why);
+  }
+});
+
+/** Verifies: [PROTOCOL Values and fields] a condition whose own bytes, read whole by their count, are malformed fails as a value that cannot be taken (TB916), not the connection. */
+test('a malformed condition fails as a value', () => {
+  for (const inner of [[0], [0xff], [0, 0, 0, 0, 5, 0, 0, 0, 0x30]]) {
+    const body = [...COMPLETE, 17, 1, 0, 0, 0, inner.length, 0, 0, 0, ...inner];
+    assert.throws(() => reply('K', body), isFailure(-916, 'TB916'));
   }
 });
 

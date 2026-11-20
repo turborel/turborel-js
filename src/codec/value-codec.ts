@@ -30,7 +30,7 @@ import {
   Xml,
 } from './values.js';
 import type { Writer } from './writer.js';
-import { apiMisuse } from '../error.js';
+import { TurborelError, apiMisuse } from '../error.js';
 
 /** The largest displacement field, a `u16`'s bits in the low half of a `u32`. */
 const MAX_ZONE_FIELD = 0xffff;
@@ -279,8 +279,9 @@ function readJson(r: Reader): Json {
   try {
     return Json.ofBytes(bytes);
   } catch (e) {
-    // Json.ofBytes throws JsonDamage alone, as every field it reads is in range.
-    throw r.corrupt(`a JSON value's octets are damaged: ${(e as JsonDamage).message}`);
+    // Json.ofBytes throws JsonDamage, or 0A000 past a limit, given as it is.
+    if (e instanceof TurborelError) throw e;
+    throw r.damaged(`a JSON value's octets are damaged: ${(e as JsonDamage).message}`);
   }
 }
 
@@ -331,7 +332,11 @@ const READERS: Readonly<Partial<Record<number, (r: Reader) => Value>>> = {
   [tag.TIMESTAMP]: (r) => readDatetime(r, 'timestamp'),
   [tag.TIMESTAMP_ZONED]: (r) => readDatetime(r, 'timestamp'),
   [tag.INTERVAL]: (r) => new Interval(readQualifier(r), r.i128()),
-  [tag.BOOLEAN]: (r) => r.flag(),
+  [tag.BOOLEAN]: (r) => {
+    const b = r.u8();
+    if (b > 1) throw r.damaged(`${String(b)} is not a truth value`);
+    return b === 1;
+  },
   [tag.DECFLOAT]: readDecFloat,
   [tag.ARRAY]: (r) => r.nested(readValues),
   [tag.ROW]: (r) => r.nested((n) => new SqlRow(readValues(n))),
@@ -354,10 +359,15 @@ const READERS: Readonly<Partial<Record<number, (r: Reader) => Value>>> = {
  *
  * @param r - the reader
  * @returns it
- * @throws {@link TurborelError} 08006 for a tag of no value, or a body malformed
+ * @throws {@link TurborelError} 08006 for a tag of no value, or a body cut short; TB916 for a body its reader cannot take, the message read whole, tags 18 and 19 among them
  */
 export function readValue(r: Reader): Value {
-  const read = READERS[r.u8()];
+  const t = r.u8();
+  const read = READERS[t];
+  if (t === tag.CLOB || t === tag.BLOB) {
+    // The server's stored form of a large object, never sent (RULES.md D8).
+    throw r.damaged(`value tag ${String(t)} is a large object's stored form, which no reply carries`);
+  }
   if (read === undefined) throw r.corrupt('no value has this tag');
   return read(r);
 }

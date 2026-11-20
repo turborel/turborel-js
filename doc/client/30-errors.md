@@ -62,7 +62,8 @@ turborel-client gives the same failure.
 
 | SQLSTATE | SQLCODE | When the driver raises it |
 |---|---|---|
-| 08006 | -919 | A message that cannot be read: a frame cut short, a body past the limit taken, a field malformed |
+| 08006 | -919 | A frame that cannot be read: one cut short, a body past the limit taken, a field malformed, bytes after its last field, a kind of no reply |
+| TB916 | -916 | A value a reply holds that the driver cannot take, its frame read whole, as a truth value of 2 or a damaged JSON value: the request fails alone, the rest of its replies read past, and the connection goes on |
 | 08001 | -919 | Settings that cannot be read, or by which no connection is made ([Settings](26-settings.md)) |
 | 22003 | -301 | A number past what the protocol carries, as an exact number's units past 128 bits |
 | 22021 | -301 | A string holding a lone surrogate, which is no Unicode character |
