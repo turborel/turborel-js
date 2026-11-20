@@ -119,10 +119,16 @@ export class TurborelError extends Error {
  * what a malformed frame, among other things, fails the connection with.
  *
  * @param message - what happened, in plain words
+ * @param cause - the error beneath it, if one is
  * @returns the failure, to be thrown
  */
-export function connectionFailure(message: string): TurborelError {
-  return new TurborelError(SQLCODE_CONNECTION, SQLSTATE_CONNECTION_FAILURE, message);
+export function connectionFailure(message: string, cause?: unknown): TurborelError {
+  return new TurborelError(
+    SQLCODE_CONNECTION,
+    SQLSTATE_CONNECTION_FAILURE,
+    message,
+    cause === undefined ? {} : { cause },
+  );
 }
 
 /**
