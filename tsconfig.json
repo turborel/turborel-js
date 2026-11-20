@@ -1,6 +1,6 @@
 {
   // The type check of everything written in TypeScript, the library and its
-  // tests, emitting nothing (RULES.md D9, R-STYLE-2). tsconfig.build.json
+  // tests, emitting nothing (RULES.md D13, R-LINT-2). tsconfig.build.json
   // compiles the library and tsconfig.test.json the tests, both from here.
   "compilerOptions": {
     "target": "es2024",
@@ -29,5 +29,5 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "tools"]
 }

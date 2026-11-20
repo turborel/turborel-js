@@ -2,4 +2,8 @@
 
 [Contents](README.md)
 
-How a program runs a statement and reads its outcome: a query's columns and rows, read whole or a batch at a time, and another statement's completion, with the rows it affected and the values it generated. Milestone M3 fills this chapter.
+This chapter will tell how a program runs a statement and reads its
+rows, a batch at a time as they come, with the columns' types and the
+values the driver gives for each, and what a statement's completion
+tells: the rows it changed, the values it generated, the server's time.
+It is filled at milestone M3.

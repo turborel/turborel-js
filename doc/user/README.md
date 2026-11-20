@@ -1,6 +1,6 @@
 # Volume I: User's Guide
 
-For anyone who writes a program that uses turborel-js: how to install it, connect, and run statements, chapter by chapter, read in order.
+For anyone who writes a JavaScript program against Turborel: installing the driver, connecting, running statements and moving data, chapter by chapter, read in order.
 
 [The documentation set](../README.md)
 
@@ -9,10 +9,10 @@ For anyone who writes a program that uses turborel-js: how to install it, connec
 - [Installing](01-installing.md)
 - [Connecting](02-connecting.md)
 - [Running Queries](03-queries.md)
-- [Prepared Statements and Cursors](04-prepared-statements.md)
+- [Prepared Statements](04-prepared-statements.md)
 - [Transactions](05-transactions.md)
 - [Large Objects](06-large-objects.md)
 - [Copying, Importing and Exporting](07-copying.md)
 - [Pipelines and Pools](08-pipelines-and-pools.md)
 - [Settings](09-settings.md)
-- [Errors](10-errors.md)
+- [Errors and Diagnostics](10-errors.md)

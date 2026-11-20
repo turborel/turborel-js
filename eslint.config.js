@@ -1,4 +1,4 @@
-// The lint of every TypeScript and JavaScript file (RULES.md D10): ESLint's
+// The lint of every TypeScript and JavaScript file (RULES.md D14): ESLint's
 // recommended rules, typescript-eslint's strict-type-checked and
 // stylistic-type-checked, and the rules below that hold RULES.md §3 where a
 // tool can. `npm run lint` fails on any warning.
@@ -33,14 +33,14 @@ export default defineConfig(
     linterOptions: { reportUnusedDisableDirectives: 'error' },
   },
   {
-    files: ['src/**/*.ts', 'test/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', 'tools/**/*.ts'],
     plugins: { jsdoc, tsdoc },
     rules: {
       // R-SIZE-1 to R-SIZE-3.
       'max-lines': ['error', { max: 600, skipBlankLines: false, skipComments: false }],
       'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
       '@typescript-eslint/max-params': ['error', { max: 5 }],
-      // R-CF-1, R-CF-2.
+      // R-SIZE-5.
       complexity: ['error', { max: 15 }],
       'max-depth': ['error', { max: 5 }],
       '@typescript-eslint/switch-exhaustiveness-check': [
@@ -59,7 +59,7 @@ export default defineConfig(
       ],
       'jsdoc/no-blank-blocks': ['error', { enableFixer: false }],
       'no-warning-comments': ['error', { terms: ['todo', 'fixme', 'xxx', 'hack'], location: 'anywhere' }],
-      // R-STYLE-3 to R-STYLE-6.
+      // R-STYLE-2, R-TYPE-1, R-TYPE-2.
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/consistent-type-exports': 'error',
       '@typescript-eslint/explicit-module-boundary-types': 'error',
@@ -81,7 +81,7 @@ export default defineConfig(
           },
         },
       ],
-      // R-SAFE-1 to R-SAFE-3, R-ERR-1.
+      // R-SAFE-2, R-ERR-1, R-ASYNC-3.
       'no-eval': 'error',
       'no-implied-eval': 'off',
       '@typescript-eslint/no-implied-eval': 'error',
@@ -94,18 +94,18 @@ export default defineConfig(
         'error',
         {
           selector: 'AwaitExpression:not(:function AwaitExpression)',
-          message: 'No top-level await: require(esm) cannot load a module that has one (D4).',
+          message: 'No top-level await: require(esm) cannot load a module that has one (D9).',
         },
         {
           selector: 'ForOfStatement[await=true]:not(:function ForOfStatement)',
-          message: 'No top-level await: require(esm) cannot load a module that has one (D4).',
+          message: 'No top-level await: require(esm) cannot load a module that has one (D9).',
         },
       ],
     },
   },
   {
     // Production code alone: no magic numbers, no printing (R-CONST-1,
-    // R-STYLE-7). Tests may use literal fixtures (R-CONST-4).
+    // R-STYLE-3). Tests may use literal fixtures (R-CONST-5).
     files: ['src/**/*.ts'],
     rules: {
       'no-console': 'error',

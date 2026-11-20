@@ -1,11 +1,13 @@
 # TODO
 
-Open work, by milestone. Each item says what is missing. How the driver
-is built is in [RULES.md](RULES.md), and the parity matrix every item
-ends in is [CONFORMANCE.md](CONFORMANCE.md). Finished work leaves this
-file, and git keeps its history.
+Open work, by milestone. The milestones and their items are the same in
+every Turborel driver, and each item names the rows of
+[CONFORMANCE.md](CONFORMANCE.md) it marks done. An item covers only the
+rows CONFORMANCE.md still marks "not yet"; one whose rows are all done
+leaves this file, and git keeps its history. How the driver is built is
+in [RULES.md](RULES.md).
 
-Code never cites this file (RULES.md R-DOC-5).
+Code never cites this file (R-DOC-5).
 
 [M1 Codec](#m1-codec) · [M2 Connect](#m2-connect) ·
 [M3 Statements](#m3-statements) ·
@@ -17,83 +19,99 @@ Code never cites this file (RULES.md R-DOC-5).
 
 ## M1 Codec
 
-The protocol's encoding, without I/O, in `src/codec/`, each part with
-codec tests from the spec.
+Every message encoded and decoded, with no I/O, each with its codec
+tests.
 
-- A reader and a writer of fields: integers, `i128` as `bigint`, flags,
-  strings, bytes, lists and keys, a count checked against what follows
-  before anything is allocated by it.
-- The 27 data types and values, UUID's tag 27 among them, at their edges:
-  `i128` limits, scales, NaN and -0.0, DECFLOAT, each interval qualifier,
-  displacements, nested arrays, rows, multisets and structured values,
-  locators, each XML modifier.
-- `Decimal`, and the mapping of every value to JavaScript and back
-  (RULES.md D6), recorded as a decision.
-- JSON values as D89's binary tree in turborel, every node, read to a
-  JSON value and written from one.
-- The tail, its tags in order, and the column, parameter and failure
-  fields.
-- Every request written and every reply read, malformed ones failing the
-  connection.
-- Compressed frames, by `node:zlib`, inflated within the longest body.
-- `TurborelError` given a failure's position and diagnostics.
-- The worked example as the first test of whole messages.
-- A check in `verify` that every test's `Verifies:` tag is well formed,
-  so R-TRACE-1 is held by a tool.
+- Frames, fields and compression: the P-FRAME, P-ZFRAME and P-FIELD
+  rows.
+- The data types and values, tested at their edges: the P-TYPE, P-VAL
+  and P-JSON rows but P-VAL-102 and P-VAL-103, and the P-COMP rows.
+- The tail: the P-TAIL rows.
+- The messages whose rows are their fields alone: P-HELLO-1,
+  P-ANSWER-1, P-QUERY-1, P-EXEC-1, P-COPYIN-1, P-COPYDATA-1, P-CHAL-1,
+  P-READY-1, P-PREPD-1, P-DESCR-1, P-ROWS-1, P-SUSP-1, P-COMPL-1,
+  P-ERROR-1, P-NOTICE-1, P-STATUS-1, P-PONG-1, and the P-LOBR rows. The
+  other requests' fields are encoded here too, and their rows, which say
+  how the server answers, are done in the milestone that names them.
+- The worked example, byte for byte, and malformed frames that must fail
+  the connection: the P-EXAMPLE rows and P-ERRN-6.
+- The manual: Appendix A and the API Reference's page of values.
 
 ## M2 Connect
 
-- TCP on port 7422, Unix sockets, and Windows named pipes.
-- TLS begun on the same port, verified by mode.
-- Every mechanism: trust, password, certificate, SCRAM-SHA-256 and
-  SCRAM-SHA-256-PLUS by `tls-exporter` and `tls-server-end-point`, with
-  the key cache.
-- Hello, capabilities, Ready and Status.
-- Connect and read timeouts, terminate and cancel.
-- The live tests against `ghcr.io/turborel/turborel:nightly`, with test
-  certificates, SCRAM users and TRUST_LOCAL, set up in `test/server/`.
+- Transport: P-INTRO-1 to P-INTRO-3, C-CONN-1 to C-CONN-3, and the
+  C-TIME rows.
+- Logging in: the P-OPEN and P-MECH rows, P-INTRO-4, P-HELLO-2,
+  P-READY-2, P-ERROR-2, C-CONN-4, C-CONN-5, C-CONN-8, C-CONN-10,
+  C-CONN-11 and C-CONN-13.
+- TLS: C-CONN-6, C-CONN-7, C-CONN-9 and C-CONN-12, by the language's
+  own TLS.
+- Capabilities and status: P-CAP-2, P-CAP-10, P-CAP-12, P-CAP-19,
+  P-STATUS-2 to P-STATUS-10, the C-ASK rows and C-TOLD-1.
+- The SCRAM key cache: C-KEY-1 and C-KEY-3 to C-KEY-8.
+- Ending: P-CANCEL-1, P-CANCEL-2, P-TERM-1, C-CONN-14 and C-RUN-6.
+- The live tests' server set-up, with test certificates, SCRAM users and
+  SERVER.TRUST_LOCAL, on `ghcr.io/turborel/turborel:nightly` in CI
+  (R-TEST-8).
+- The manual: the User's Guide's chapter Connecting and the API
+  Reference's page of connections.
 
 ## M3 Statements
 
-- Query, and rows streamed a batch at a time.
-- Prepared statements, numbered cursors and describe.
-- Errors, diagnostics, notices and conditions.
-- Autocommit, and `fetch-ends`.
-- Completion details: rows affected, generated values, server time,
-  commit position.
-- Multi-statement queries, query attributes, ping, reset and change-user.
+- Queries and prepared statements: P-REQ-2, P-QUERY-2 to P-QUERY-6,
+  P-EXEC-2 to P-EXEC-4, the P-PREP, P-FETCH, P-CLOSE, P-DEALLOC and
+  P-DESC rows, the C-RUN rows but C-RUN-6, and the C-PREP rows.
+- Completions, failures, notices and conditions: P-COMPL-2 to
+  P-COMPL-6, the P-ERRN rows but P-ERRN-6, and C-TOLD-2 to C-TOLD-9.
+- The session: P-PING-1, the P-RESET and P-CHUSER rows, and the C-CTRL
+  rows.
+- Capabilities: P-CAP-1, P-CAP-3 to P-CAP-9, P-CAP-11, P-CAP-13 and
+  P-CAP-15 to P-CAP-18.
+- XML and UUID values: the C-XML and C-UUID rows.
+- Conversations: P-CONV-1 to P-CONV-3 and P-CONV-6.
+- The manual: the chapters Running Queries, Prepared Statements,
+  Transactions and Errors and Diagnostics; the pages of statements and
+  errors; Appendix B.
 
 ## M4 Large objects and bulk
 
-- Locators: read, create, append, free and hold, and Node.js streams over
-  them.
-- Copy in, and copying the rows an iterable gives.
-- CSV and tab-separated import.
-- CSV and native export, and reading the native form back.
+- Large objects: P-VAL-102, P-VAL-103, the P-LOB rows, and the C-LOB
+  rows.
+- Copy: P-CAP-14, P-COPYIN-2, the P-COPYEND rows, P-CONV-4, P-CONV-5,
+  and the C-COPY rows.
+- Import and export: the C-IMPORT rows.
+- The manual: the chapters Large Objects and Copying, Importing and
+  Exporting; the pages of large objects and copy.
 
 ## M5 Settings
 
-- The `turborel://` URI, options and the TURBOREL_ variables.
-- The service file and the password file.
-- Several hosts, `load_balance` and `target` roles.
-- TLS modes and `channel_binding`.
+- Settings, the URI and the files, read as turborel-client's settings
+  tests read them (R-TEST-9): the C-SET, C-OPT, C-URI, C-SVC and C-PASS
+  rows.
+- Several servers and roles: the C-HOSTS rows.
+- TLS modes and channel binding: the C-TLS rows.
+- The key cache shared by settings: C-KEY-2.
+- The manual: the chapter Settings, the page of settings, and
+  Appendix C.
 
 ## M6 Throughput
 
-- Pipelines, with the 64 KiB window and skipping on error by savepoints.
-- Pools, with PoolConfig's defaults, the Ping check and the Reset return.
-- The SQL-agent: CONNECT, SET CONNECTION and DISCONNECT.
+- Pipelines: P-REQ-1 and the C-PIPE rows.
+- Pools: the C-POOL rows.
+- The SQL-agent: the C-AGENT rows.
+- The manual: the chapter Pipelines and Pools; the pages of pipelines,
+  pools and the SQL-agent.
 
 ## M7 Standard API
 
-- The Promise-based API of RULES.md D2 over the layers above.
-- The manual, `doc/`, filled: every chapter its contents page names, its
-  examples run.
+- The standard API (RULES.md D2): the S-API rows.
+- The manual: the chapter Installing, the API Reference's pages of the
+  standard API, and every page the earlier milestones filled checked
+  again against the code, every example run.
 
 ## M8 Parity audit
 
 - Every row of CONFORMANCE.md checked against turborel-client and the
-  spec, and marked done.
-- Every frame of the sample file turborel's repository is to keep beside
-  the protocol's spec, decoded at a pinned commit, once that file exists.
-- The coverage floor held, and this file empty.
+  spec, the coverage floor held (RULES.md D7), and this file empty.
+- Once Turborel keeps a file of sample frames beside the spec, every
+  frame of it decoded, at a pinned commit.

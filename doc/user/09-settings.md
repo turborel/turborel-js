@@ -2,4 +2,8 @@
 
 [Contents](README.md)
 
-How a connection's settings are read from a `turborel://` URI, the program's options, the environment, a service file and a password file; how several servers are tried and a role chosen; and how TLS is used by mode. Milestone M5 fills this chapter.
+This chapter will tell where a connection's settings come from: a
+`turborel://` URI or the program's options, a service file, the
+environment's TURBOREL_ variables and a password file; how several
+servers are tried and a primary or a replica chosen; and how TLS modes
+and channel binding protect a connection. It is filled at milestone M5.

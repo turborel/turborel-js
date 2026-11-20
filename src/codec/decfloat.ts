@@ -1,5 +1,5 @@
 /**
- * The driver's decimal floating-point number (RULES.md D6): a coefficient
+ * The driver's decimal floating-point number (RULES.md D11): a coefficient
  * of at most 34 digits times a power of ten, in turborel's one form, as
  * the protocol's value tag 15 carries it (`[PROTOCOL Values]`).
  *

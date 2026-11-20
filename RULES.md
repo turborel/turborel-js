@@ -1,19 +1,28 @@
 # turborel-js rules
 
 How turborel-js is designed, written and verified. Every change follows
-these rules; `npm run verify` checks those a tool can check, and review
-checks the rest.
+these rules; `npm run verify` checks those a tool can check, and
+review checks the rest.
 
 Rules (R-…) say how code and tests are written. **shall** is mandatory,
-and a departure needs a decision recorded here. **should** is expected,
-and a reviewer may accept a reasoned exception.
+and a departure needs a decision recorded here (§7). **should** is
+expected, and a reviewer may accept a reasoned exception.
 
 Decisions (D1…) record how the driver is built and why. Change one only
 by changing this file in a reviewed commit. A decision says what was
 chosen and why, and the module it names holds the mechanism.
 
 Cite both by ID in code, tests, reviews and commit messages, as in
-`RULES.md D4` or `R-ERR-2`.
+`RULES.md D6` or `R-ERR-2`.
+
+The rules are modelled on Turborel's own
+[RULES.md](https://github.com/turborel/turborel/blob/main/RULES.md),
+adapted to drivers. Every Turborel driver keeps the same requirement IDs
+with the same meaning, and the same decisions D1 to D8, so a rule is
+cited the same way in every repository; a driver's own decisions begin
+at D9, and its own requirements are in families of their own. Where
+JavaScript's library conventions and a rule here disagree, the rule is
+kept, and D8 lists where.
 
 Before changing code, read §3 (code rules), §4 (test rules) and the
 decisions covering your area. What the driver implements is in
@@ -21,91 +30,424 @@ decisions covering your area. What the driver implements is in
 
 [1 Decisions](#1-decisions) · [2 Layout](#2-project-layout) ·
 [3 Code](#3-code-rules) · [4 Tests](#4-test-rules) ·
-[5 Coverage](#5-coverage) · [6 Platforms](#6-platforms) ·
-[7 Process](#7-process-and-tools) ·
-[8 Node.js convention](#8-where-these-rules-depart-from-nodejs-convention) ·
-[9 References](#9-references)
+[5 Coverage](#5-coverage) · [6 Process](#6-process-and-tools) ·
+[7 The decisions](#7-the-decisions) · [8 References](#8-references)
 
 ---
 
 ## 1. Decisions
 
+Each is told in full in [§7](#7-the-decisions).
+
 | # | Decision |
 |---|---|
-| **The driver** | |
-| D1 | Protocol version 1, spoken natively in TypeScript, with no native core |
-| D2 | The standard API is a Promise-based Node.js API; browsers are not served |
-| D3 | Node.js 22.12 or later, each release until its end of life |
-| D4 | One ES module, with an exports map, which CommonJS loads by `require` |
-| D5 | No runtime dependencies: Node.js's own modules |
-| D6 | Exact numbers are BigInt, and a Decimal of the driver's own |
-| D7 | One error type, `TurborelError` |
-| D8 | The version is the turborel release's; the owner publishes, once every driver is done |
-| **Tooling and process** | |
-| D9 | TypeScript 6.0, strict, compiled to JavaScript and declarations |
-| D10 | ESLint with typescript-eslint, and Prettier, rather than Biome |
-| D11 | Tests on `node:test` against the compiled code; coverage by c8 |
-| D12 | The checks are npm scripts, run by a pre-commit hook |
-| D13 | CI on Linux, macOS and Windows, on every supported Node.js |
-| D14 | The development dependencies |
+| **Shared by every Turborel driver** | |
+| D1 | The native protocol, version 1, in layers that follow turborel-client |
+| D2 | The language's standard API, over a low-level client of turborel-client's features |
+| D3 | The runtime minimum follows the ecosystem's own support |
+| D4 | One command runs every check, before each commit and in CI on three platforms |
+| D5 | The version is the Turborel release's: 0.0.0 in the alpha, speaking protocol 1 |
+| D6 | Tests and code cite Turborel's documents by their headings |
+| D7 | A coverage floor, enforced in CI, that only rises |
+| D8 | Where these rules depart from JavaScript's conventions |
+| **This driver's own** | |
+| D9 | One ES module, with an exports map, which CommonJS loads by `require` |
+| D10 | No runtime dependencies: Node.js's own modules |
+| D11 | Exact numbers are BigInt, and a Decimal of the driver's own |
+| D12 | One error type, `TurborelError` |
+| D13 | TypeScript 6.0, strict, compiled to JavaScript and declarations |
+| D14 | ESLint with typescript-eslint, and Prettier, rather than Biome |
+| D15 | Tests on `node:test` against the compiled code; coverage by c8 |
+| D16 | The development dependencies |
 
-### The driver
+---
 
-#### D1. Protocol version 1, spoken natively in TypeScript, with no native core
+## 2. Project layout
 
-The driver speaks turborel's native protocol, version 1
-(`doc/client/05-protocol.md` in turborel), itself, in TypeScript compiled
-to JavaScript. It has no native addon and wraps no other driver, neither
-turborel-c nor turborel-client by WebAssembly, so it installs from npm
-with no build step, on every platform Node.js runs on, and a reviewer
-reads every line of it in one language.
+| Path | What |
+|---|---|
+| `package.json` | the package: its name, version (D5), exports (D9), engines (D3), scripts (D4) and development dependencies (D16) |
+| `package-lock.json` | their pinned versions |
+| `tsconfig.json`, `tsconfig.build.json`, `tsconfig.test.json` | the type check, the package's build to `dist/`, the tests' build to `build/` (D13) |
+| `eslint.config.js`, `.prettierrc.json` | the linters and the formatter (D14) |
+| `.c8rc.json` | coverage and its floor (D7, D15) |
+| `tools/` | the checks tool, `check.ts`, and the headings of Turborel's documents it holds citations to (D4, D6) |
+| `src/index.ts` | the package's one entry: everything it exports |
+| `src/error.ts` | `TurborelError`, the driver's error (D12) |
+| `src/codec/` | the `codec` layer, with no I/O |
+| `src/transport/`, `src/auth/`, `src/tls/`, `src/session/`, `src/statements/`, `src/lobs/`, `src/copy/`, `src/settings/`, `src/pipeline/`, `src/pool/`, `src/api/` | the other layers of D1, each made as its milestone comes |
+| `test/` | the tests, one `*.test.ts` beside the path of what it tests; `test/support/`, the helpers they share; `test/tools/`, the checks tool's |
+| `doc/` | the manual |
+| `dist/`, `build/`, `coverage/` | made by the build, the tests and coverage; ignored |
 
-Its layers are turborel-client's, so one is checked against the other:
-the codec (`src/codec/`, turborel-protocol), the transport, authentication
-and TLS, the session, statements, large objects, copy, settings,
-pipelines and pools, and over them the standard API (D2). Where the spec
-and turborel-client's code differ, the code is right.
+---
 
-#### D2. The standard API is a Promise-based Node.js API; browsers are not served
+## 3. Code rules
+
+The tools named by "the formatter", "the linters", "the type checker" and
+"the checks tool" are D4's.
+
+### R-STYLE: formatting and idiom
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-STYLE-1 | Code **shall** be formatted by the formatter. | the formatter |
+| R-STYLE-2 | Names **shall** follow the language's own conventions; code implementing a message, field or setting is named after it, as the spec names it. | the linters; review |
+| R-STYLE-3 | Library code **shall not** print, or write to a stream it was not given. | the linters or the checks tool |
+| R-STYLE-4 | What is not public **shall** be private, by the language's own means, so the public API is what is documented. | review |
+
+### R-SIZE: short functions and files
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-SIZE-1 | A function **shall** have at most 50 lines of code, blank lines and comments not counted. | the linters or the checks tool |
+| R-SIZE-2 | A source file **shall** have at most 600 lines; split by the spec's sections or by layer. | the linters or the checks tool |
+| R-SIZE-3 | A function **shall** take at most 5 parameters; else a structure or an options object. | the linters |
+| R-SIZE-4 | A module **should** hold one concept, stated in its doc comment. | review |
+| R-SIZE-5 | A function's complexity **shall** be at most 15, and its blocks nested at most 5 deep. | the linters |
+
+### R-DOC: comments and documentation
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-DOC-1 | Every public item **shall** have a doc comment in the language's documentation format, saying each parameter, what it returns, and each failure it gives. | the linters; review |
+| R-DOC-2 | Comments **shall** say *why*: the section implemented, the choice made, the invariant relied on. | review |
+| R-DOC-3 | The API reference, where the language's tools build one, **shall** build without warnings. | the checks tool |
+| R-DOC-4 | Behaviour the protocol or turborel-client governs **shall** cite it by its heading, `[PROTOCOL Frames]`, `[CLIENT Pools]`; the driver's own choices cite their decision (D6). | review; the checks tool |
+| R-DOC-5 | No commented-out code, and no `TODO`, `FIXME` or `XXX` comments: open work goes in TODO.md, and code never cites TODO.md. | the linters or the checks tool |
+| R-DOC-6 | Every source file **shall** begin with a doc comment giving its responsibility and the sections it implements. | review |
+| R-DOC-7 | A change a program can see **shall** update the manual, `doc/`, in the same commit; every claim is checked against the code, and every example is run. The manual keeps Turborel's layout, which turborel.com's documentation site reads: each page opens with its `# Title` and a line holding only `[Contents](README.md)`, each volume's README.md lists its pages, links within `doc/` and to other files of this repository are relative links that resolve (the site points the latter at GitHub, at the same tag), a link to Turborel's own manual is its GitHub address under `https://github.com/turborel/turborel/blob/main/doc/`, `user/01-installing.md` keeps its name, and `doc/` holds no images. | review; the checks tool |
+
+### R-CONST: no magic numbers or strings
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-CONST-1 | Numbers in library code other than `0` or `1` **shall** be named constants, documenting the value's source. | the linters; review |
+| R-CONST-2 | Every protocol tag **shall** be a named constant, defined once: a message's kind, a data type's and a value's tag, a tail tag, a capability's name, a mechanism's name, a status name, and each SQLSTATE the driver raises. | review |
+| R-CONST-3 | Strings matched or looked up, such as settings' names, URI parts and environment variables, **shall** be named constants. Messages for people are not. | review |
+| R-CONST-4 | Related constants **shall** live together in their layer's module, under a comment naming the section they come from. | review |
+| R-CONST-5 | Tests may use literal fixtures, as the spec prints its bytes; an expected value restating a constant **should** use it. | review |
+
+### R-ERR: errors
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-ERR-1 | Every failure the library gives **shall** be the driver's error (D2): no stray exception, panic, abort, assertion or other error of the language or its libraries reaches a program, and no library code ends the process. | the linters; tests; review |
+| R-ERR-2 | Each failure **shall** carry its SQLCODE, SQLSTATE and message, and, once read from a server, the rest of it: the rule it cites, its position, whether a transaction is still active, and its diagnostics. A failure the driver raises itself carries the SQLCODE and SQLSTATE turborel-client gives the same failure. | tests |
+| R-ERR-3 | No failure **shall** be silenced. One caught and given again as the driver's keeps its cause; a result left unread says why it cannot matter. | the linters; review |
+| R-ERR-4 | A connection that fails **shall** be closed, and every request waiting on it given that failure; a failed call leaks nothing and leaves nothing waiting. | tests; review |
+
+### R-NUM: integers and numbers
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-NUM-1 | Every integer of the protocol **shall** be read and written at its width, little-endian, explicitly: never by the platform's byte order, by casting a buffer, or by bitwise operators on numbers wider than the language's operators keep exact. | review; tests |
+| R-NUM-2 | A value out of range for its field, or for the type it is read into, **shall** be refused with the driver's error, never truncated, wrapped or rounded. | tests |
+| R-NUM-3 | An exact number (units `i128`, scale `u32`) and a DECFLOAT **shall** never pass through a binary floating-point type. | review; tests |
+| R-NUM-4 | An approximate number **shall** keep its bits: NaN and -0.0 are read and written as the double they are, and floats are compared bit for bit, never for equality. | tests; review |
+| R-NUM-5 | In a language whose integers are bounded, arithmetic on sizes, counts and offsets **shall** be shown not to overflow before it is done. | the linters; review |
+
+### R-LINT: warnings
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-LINT-1 | A warning is an error: of the compiler, the linters and the type checker, and of the runtime itself while the tests run. | the checks tool |
+| R-LINT-2 | The strictest standard linters and type checking the language has **shall** be on; a check left off says why in the configuration that leaves it off. | review |
+| R-LINT-3 | A warning **shall** be silenced only on its line, naming its rule and saying why; a suppression no longer needed **shall** be removed. | the linters; review |
+
+### R-DEP: dependencies
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-DEP-1 | The library **shall** depend on nothing but the language's standard library and runtime, unless a decision here admits a dependency, with its reason, version, license and review. | review |
+| R-DEP-2 | A dependency, of the library or of its tools, **shall** be production-grade by its makers' own claims: a stable release they support. | review |
+| R-DEP-3 | Tools **shall** be pinned by version, with the ecosystem's lock file under version control where it has one; a change of a tool's version is a commit of its own. | review |
+
+### R-SAFE: what a server sends, and secrets
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-SAFE-1 | A length or count a server, or a file the driver reads, gives **shall** be checked against what follows and the limit taken before anything is held for it, so no reply takes the program's memory without bound. | tests; review |
+| R-SAFE-2 | What a server sends **shall** never be run, loaded or deserialized as code. | the linters; review |
+| R-SAFE-3 | TLS **shall** be used and verified as the settings ask, and a connection **shall not** fall back to less than its mode allows. | tests |
+| R-SAFE-4 | A secret (a password, anything derived from one, a SCRAM key or proof, a cancel key) **shall** never be logged, put in a failure's message or an object's display form, or sent where it was refused; where the language allows, it is cleared from memory once used. | tests; review |
+| R-SAFE-5 | No module-level mutable state: what lasts belongs to an object a program made, such as a connection, a pool or a key cache. | review |
+| R-SAFE-6 | The library **shall** start no thread, timer or task but for an object a program made, and a closed connection, cursor or pool leaves none behind. | tests; review |
+
+### R-PLAT: platforms
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-PLAT-1 | The driver **shall** run on Linux, macOS and Windows, on every runtime D3 supports; CI checks each (D4). | CI |
+| R-PLAT-2 | Code of one platform, such as a Unix socket or a named pipe, **shall** be chosen by the platform, and elsewhere refused with the driver's error, saying so; never silently something else. | tests; review |
+| R-PLAT-3 | Paths **shall** be made by the language's path functions, and files kept with LF line endings (`.gitattributes`). | review |
+| R-PLAT-4 | Code built for one platform only **shall** say, when handed back, that it was not run on the others. | review |
+
+### R-TYPE: TypeScript
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-TYPE-1 | No `any`, no non-null assertion `!`, and no `==`. | the linters |
+| R-TYPE-2 | Exports **shall** be named, never default; a relative import names its file with `.js`; an import of types alone is `import type`. | the linters; the type checker |
+| R-TYPE-3 | No `enum` or `namespace`; a set of constants is `const`s, or an object `as const`. | the type checker (`erasableSyntaxOnly`) |
+| R-TYPE-4 | An integer the protocol writes as `u64`, `i64` or `i128` **shall** be a `bigint`, both ways; a `bigint` becomes a `number` only once shown to be a safe integer. | review; tests |
+
+### R-ASYNC: promises and events
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-ASYNC-1 | No promise **shall** float: each is awaited, returned, or handed to what handles its rejection. | the linters |
+| R-ASYNC-2 | Every `'error'` event of a socket or stream **shall** be listened to, so nothing goes unhandled. | review; tests |
+| R-ASYNC-3 | No module **shall** await at its top level, as `require` could not load the package (D9). | the linters |
+
+---
+
+## 4. Test rules
+
+### R-TEST: levels and layout
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-TEST-1 | A test **shall** sit at the lowest level that shows its requirement: a codec test of bytes, a test of a layer over a stream the test controls, a test of the API, or a live test against a server. | review |
+| R-TEST-2 | Tests **shall** derive from the spec and turborel-client, not from the code: normal cases, boundaries included, and robustness cases with the exact SQLCODE and SQLSTATE expected. | review |
+| R-TEST-3 | A test's name **shall** say the behaviour checked. | review |
+| R-TEST-4 | Test code may assert, print and use literal fixtures; every other rule applies. | the linters' configuration |
+| R-TEST-5 | Tests **shall** be deterministic and independent: no clock, randomness, network beyond loopback, or order between them. A case generator uses a fixed seed. A live test runs against a server on loopback that its own set-up starts, on its own port and data directory. | review |
+| R-TEST-6 | Every fixed defect **shall** get a regression test that fails without the fix, its doc comment saying so. | review |
+| R-TEST-7 | A fixture or helper shared by tests **shall** be written once, in one place. Tests use the one framework D9 or later names, no other. | review |
+| R-TEST-8 | Live tests **shall** run against `ghcr.io/turborel/turborel:nightly` in CI, set up by the repository's own server set-up, with test certificates, SCRAM users and SERVER.TRUST_LOCAL. | CI |
+| R-TEST-9 | SCRAM **shall** be tested by RFC 7677's test vector, and settings by the URI, service file, password file and environment cases of turborel-client's settings tests, so every driver reads settings as turborel-client does. | review |
+
+### R-TRACE: traceability
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-TRACE-1 | Every test **shall** cite what it verifies, by its doc comment, beginning `Verifies:`, beginning with a tag of D6: `[PROTOCOL <heading>]`, `[CLIENT <heading>]`, `[DESIGN] D<n>` or `[TOOL] R-<id>`. | the checks tool |
+| R-TRACE-2 | A citation **shall** name a heading, decision or rule that exists. | the checks tool |
+| R-TRACE-3 | Code implementing a requirement **shall** cite it (R-DOC-4). | review |
+| R-TRACE-4 | CONFORMANCE.md **shall** change with the change that implements or changes a row. A row is marked done only where the driver's code for it exists and tests citing its section pass, or, of a driver built over another, as CONFORMANCE.md says. | review |
+
+---
+
+## 5. Coverage
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-COV-1 | Coverage **shall** be measured by `npm run coverage`, over the library and every test. | the checks tool |
+| R-COV-2 | Coverage **shall not** fall below the floor (D7); a change raising it **should** raise the floor. | the checks tool, in CI |
+| R-COV-3 | A gap is closed by a test derived from a requirement, or by removing dead code; never by a test of no requirement, and never by excluding the code. | review |
+
+---
+
+## 6. Process and tools
+
+| ID | Rule | Checked by |
+|---|---|---|
+| R-PROC-1 | `npm run verify` **shall** pass before every commit; CI adds every platform, every supported runtime and the coverage floor (D4). | pre-commit hook; CI |
+| R-PROC-2 | Every change **shall** be reviewed against the checklist below. | review |
+| R-PROC-3 | Commits **should** be small and single-purpose, in CONTRIBUTING.md's form (`area: summary`, then why), citing the rules applied or changed. | review |
+| R-PROC-4 | A threshold change **shall** change RULES.md and the configuration that holds it together. | review |
+| R-PROC-5 | Project automation **shall** be written in the language's own tooling, never shell scripts; the git hook only hands over to the checks tool. | review |
+| R-PROC-6 | CI's actions **shall** be pinned by their full commit SHA, with the version in a comment. | review |
+| R-PROC-7 | A release **shall** be published only as VERSIONING.md says, by the owner (D5). | review |
+
+The review checklist:
+
+- the spec or turborel-client cited in code (R-DOC-4) and tests
+  (R-TRACE-1);
+- normal and robustness tests (R-TEST-2), and a failing-first test for a
+  fix (R-TEST-6);
+- every failure the driver's, carrying its condition (R-ERR);
+- no magic numbers or strings, protocol tags named (R-CONST);
+- every length a server sends bounded, no secret disclosed (R-SAFE);
+- comments explain why (R-DOC-2);
+- CONFORMANCE.md (R-TRACE-4), the manual (R-DOC-7) and TODO.md updated
+  where they change.
+
+---
+
+## 7. The decisions
+
+### Shared by every Turborel driver
+
+#### D1. The native protocol, version 1, in layers that follow turborel-client
+
+The driver speaks Turborel's native protocol, version 1, as
+`doc/client/05-protocol.md` in Turborel's repository lays it out,
+itself, in TypeScript compiled to JavaScript, with no native code and no runtime dependency beyond Node.js's own modules. Where that page and turborel-protocol's code differ,
+the code is right, and the driver follows it; CONFORMANCE.md names each
+such place.
+
+The reference is turborel-client. The driver does all it does before it
+is called done, row by row in CONFORMANCE.md, and is built in the same
+layers as turborel-client's modules, so a reviewer checks one against
+the other. Each layer is a commit area of CONTRIBUTING.md.
+
+| Layer | What it covers | turborel-client |
+|---|---|---|
+| `codec` | the 5-byte frame header; fields; the tail and its tag order; the data types and values; JSON values; zlib `z` frames within the length bound; the 16 MiB body limit | `protocol/src` |
+| `transport` | TCP on 7422; Unix sockets; the Windows named pipe `\\.\pipe\turborel`; TLS begun on the same port; the connect and read timeouts | `target.rs`, `timeouts.rs`, `pipe.rs` |
+| `auth`, `tls` | trust, password, certificate, SCRAM-SHA-256 and -PLUS; secrets refused over plain TCP; the SCRAM key cache; TLS | `mechanism.rs`, `scram.rs`, `tls.rs` |
+| `session` | Hello, Ready, Status, notices, conditions, diagnostics, autocommit, cancel, terminate, ping, reset, change-user, query attributes, multi-statement | `connection.rs`, `session.rs`, `cancel.rs`, `told.rs` |
+| `statements` | queries and streamed queries; prepare, execute, fetch, close, deallocate; numbered cursors; describe; completions | `statements.rs`, `frames.rs` |
+| `lobs`, `copy` | locators, their reads, writes and streams; copy, import and export | `lobs.rs`; `copy.rs`, `import/`, `export.rs` |
+| `settings` | the URI, options, variables, service and password files, several hosts, roles, TLS modes, channel binding | `settings/`, `failover.rs`, `role.rs` |
+| `pipeline`, `pool` | pipelines; pools; the SQL-agent | `pipeline.rs`; `pool/`, `agent.rs` |
+| `api` | the standard API (D2) | the language's own |
+
+In turborel-js each layer is a directory of `src/`, named as its
+commit area: `src/codec/` and on (§2). Node.js gives what the layers
+need (D10): `node:net` for TCP, Unix sockets and Windows named pipes;
+`node:tls` for TLS, with `exportKeyingMaterial` for SCRAM's
+`tls-exporter` binding and the peer's certificate for
+`tls-server-end-point`; `node:crypto` for SCRAM-SHA-256; and `node:zlib`
+for compressed frames.
+
+#### D2. The language's standard API, over a low-level client of turborel-client's features
+
+The driver's standard interface is a Promise-based API for Node.js, with TypeScript types, loaded as an ES module or by `require`, so a program, and the
+tools built for JavaScript's database interface, use it as they use
+any other driver. It sits over a low-level client that has every feature
+of turborel-client. What the standard interface has no place for, such
+as pipelines, pools, copy, large objects by locator, notices and the
+session's status, is reached through the low-level client or the
+driver's own extensions of the standard interface.
+
+Every failure is the driver's error, carrying its SQLCODE and SQLSTATE
+(R-ERR). The standard interface is built at milestone M7 and checked in
+M8's audit; until then its names may change.
 
 Node.js has no standard database interface of its own, so the driver
-gives what its programs expect of one: a Promise-based API, every
-operation that waits on the server an `async` call.
+gives what its programs expect of one. Every operation that waits on
+the server is an `async` call: `connect(settings)` gives a connection,
+of a `turborel://` URI or options; a connection's `query(sql, params)`
+runs a statement and `prepare(sql)` makes a prepared statement; a
+cursor is an async iterator of rows, read by `for await`; a pool hands
+out connections and takes them back. A connection, a cursor and a pool
+close by `close()`, and by `Symbol.asyncDispose`, so `await using`
+closes them where the runtime has it.
 
-- `connect(settings)` gives a connection, of a turborel URI or options,
-  as turborel-client's `Settings` reads them.
-- A connection's `query(sql, params)` runs a statement, and `prepare(sql)`
-  a prepared statement that is executed many times.
-- A cursor is an async iterator of rows, read by `for await`, a batch at a
-  time.
-- A pool hands out connections and takes them back.
-- A connection, a cursor and a pool close by `close()`, and by
-  `Symbol.asyncDispose`, so `await using` closes them where the runtime
-  has it.
+The driver's error is `TurborelError` (D12). An exact number is a
+`bigint`, or a `Decimal` of the driver's own (D11). A browser cannot
+open a TCP connection, which the protocol needs, so the driver does not
+run in one, and no bridge for one is planned; Electron and other
+programs on Node.js are served.
 
-It is built in milestone M7, over the low-level client that milestones
-M1 to M6 build to turborel-client's features, which stays public for a
-program that needs what the standard API does not say, and is checked
-with the rest in M8, the parity audit. Until then, the README's first
-query shows the API as it is meant to be.
+#### D3. The runtime minimum follows the ecosystem's own support
 
-A browser cannot open a TCP connection, which the protocol needs, so the
-driver does not run in one, and no bridge for one is planned. Electron
-and other programs on Node.js are served.
+The driver supports Node.js 22.12 or later. The rule is the ecosystem's own:
+support every release its makers still support, and drop each at its
+end of life. Where a major framework of the language sets a higher
+floor, the driver matches it. The minimum changes in a commit of its
+own, which changes this decision, the package's metadata, CI and
+README.md together.
 
-#### D3. Node.js 22.12 or later, each release until its end of life
+In November 2026 that is Node.js 22, 24 and 26, of which 22 ends in
+April 2027; CI tests those three, and an odd-numbered release, never a
+long-term one, is not tested. The floor within 22 is 22.12, the first
+release that loads an ES module by `require` without a flag (D9).
+`package.json` says so in `engines`, and the types the code is checked
+against are Node.js 22's (D13), so an API only a later release has
+fails the type check.
 
-The driver supports each release of Node.js its project still supports,
-and drops each at its end of life: in November 2026, 22, 24 and 26, of
-which 22 ends in April 2027. CI tests those three (D13); an odd-numbered
-release, never a long-term one, is not tested.
+#### D4. One command runs every check, before each commit and in CI on three platforms
 
-The floor within 22 is 22.12, the first release that loads an ES module by
-`require` without a flag (D4). `package.json` says so in `engines`. The
-types the code is checked against are those of Node.js 22 (D9), so an API
-only a later release has fails the type check.
+`npm run verify` runs every check a change must pass, stopping at the
+first failure: the formatter, the linters, the type checker where the
+language has one, the checks tool's own rules (lengths a linter does not
+measure, citations and their targets, open-work markers, the manual's
+titles, `[Contents](README.md)` lines and links), and every test.
+`npm run coverage` measures coverage and holds it to its floor (D7).
 
-#### D4. One ES module, with an exports map, which CommonJS loads by `require`
+`.githooks/pre-commit` hands over to the same command. It is a script
+only because git runs hooks as scripts. CI runs it on Linux, macOS and
+Windows, over every runtime D3 supports, with the live tests against the
+nightly image and coverage on Linux. Every action is pinned by its full
+commit SHA, its version in a comment, and Dependabot proposes each bump.
+
+The command is an npm script, made only of Node.js and the tools, so it
+runs alike on every platform: `format:check` (Prettier, D14), `lint`
+(ESLint, D14), `typecheck` (`tsc`, D13), `build`, then `test`, which
+compiles the tests and the checks tool to `build/`, runs the checks
+tool, `tools/check.ts`, and runs every test on `node:test` (D15).
+`npm run install-hooks` points git at `.githooks/` once per clone.
+`release.yml` runs only by hand (D5), and the live tests against the
+nightly image come with milestone M2.
+
+#### D5. The version is the Turborel release's: 0.0.0 in the alpha, speaking protocol 1
+
+The driver has no version scheme of its own. Its version is the number
+of the Turborel release it is made for, the same as the server's: a
+Turborel release and each driver's release for it share the number,
+**MAJOR.MINOR.PATCH**, as Turborel's VERSIONING.md numbers it. The alpha
+is 0.0.0, as Turborel's is, and speaks protocol version 1.
+
+The number is written once, in `package.json`'s `version`. Nothing is
+published, and no release is tagged, until every Turborel driver is
+done; then the owner publishes them together (VERSIONING.md).
+
+#### D6. Tests and code cite Turborel's documents by their headings
+
+A test cites what it verifies, and code what it implements, by the
+heading of the section that says it, as printed:
+
+- `[PROTOCOL <heading>]`, a heading of The Native Protocol,
+  `doc/client/05-protocol.md`, as `[PROTOCOL Frames]`;
+- `[CLIENT <heading>]`, a heading of The Client Library,
+  `doc/client/02-library.md`, or of Settings, Pipelines and Pools,
+  `doc/client/02-library-connections.md`, which share no heading, as
+  `[CLIENT Pipelines]`;
+- `[DESIGN] D<n>`, a decision of this file;
+- `[TOOL] R-<id>`, a rule the checks tool holds, for the tool's own
+  tests.
+
+What else a test relies on follows the tag, as an RFC by its section:
+`[PROTOCOL Mechanisms] [RFC 7677 §3]`. The heading `Lob 'L'` is printed
+twice in The Native Protocol, under Requests and under Replies, so a
+citation of it says which it means.
+
+The checks tool keeps the headings of those three documents, copied at
+the Turborel commit CONFORMANCE.md names, and refuses a citation of a
+heading, decision or rule that is not there (R-TRACE-2). In JavaScript,
+a test cites by its doc comment, beginning `Verifies:`.
+
+#### D7. A coverage floor, enforced in CI, that only rises
+
+`npm run coverage` measures the library's coverage over every test,
+and CI fails below the floor. In every Turborel driver the floor is at
+least 90 % of lines, and of branches where the tool measures them. It
+only rises: a change that raises coverage well above it raises it. A
+floor below 100 % says why.
+
+The floor is 95 % of lines, statements and functions, and 90 % of
+branches, kept in `.c8rc.json` and measured over every file of `src/`.
+It is below 100 % because the transport's code of one platform, a Unix
+socket or a named pipe, is measured on Linux alone, where CI measures
+coverage.
+
+#### D8. Where these rules depart from JavaScript's conventions
+
+The driver follows its language's library conventions for layout,
+naming, packaging, documentation and testing. Where one conflicts with a
+rule here, the rule is kept:
+
+- Libraries commonly leave the length of functions and files to taste.
+  These are bounded (R-SIZE).
+- Libraries commonly fail an argument out of range with the language's
+  own error. Here every failure is the driver's, an argument's too, with
+  the SQLCODE and SQLSTATE turborel-client gives it (R-ERR-1), so a
+  program handles one kind of failure.
+
+- Libraries commonly read a 64-bit integer as a `number` where they
+  expect it small. The driver reads every one as a `bigint` (R-TYPE-4).
+- Node.js's own APIs throw a `TypeError` or `RangeError` for an argument
+  of the wrong type or range; the driver throws a `TurborelError`, of
+  SQLCODE -910 and SQLSTATE TB910 where turborel-client has no such
+  failure, as turborel's API misused (D12).
+
+### This driver's own
+
+#### D9. One ES module, with an exports map, which CommonJS loads by `require`
 
 The package is ES modules only, `"type": "module"`, with no CommonJS
 build. Every supported release (D3) loads an ES module by `require`, so a
@@ -121,161 +463,111 @@ one module.
 `exports` gives `.`, with its types first, and `./package.json`, and
 nothing else, so the internal modules are no part of the API and a
 program cannot reach them. `require` cannot load a module that awaits at
-its top level, so no module does: ESLint refuses it.
+its top level, so no module does: ESLint refuses it (R-ASYNC-3).
 
-#### D5. No runtime dependencies: Node.js's own modules
+#### D10. No runtime dependencies: Node.js's own modules
 
 The package depends on nothing at run time. Node.js has all it needs:
+`node:net`, `node:tls`, `node:crypto`, `node:zlib`, and `node:fs`,
+`node:os` and `node:path` for the service and password files (D1). The
+driver uses only APIs Node.js marks stable. A runtime dependency would
+need a decision here, and a reason the platform cannot serve (R-DEP-1).
 
-- `node:net` for TCP, Unix sockets and Windows named pipes;
-- `node:tls` for TLS, with `exportKeyingMaterial` for SCRAM's
-  `tls-exporter` binding and the peer's certificate for
-  `tls-server-end-point`;
-- `node:crypto` for SCRAM-SHA-256's PBKDF2, HMAC, SHA-256 and random
-  nonces, and the key cache's secret;
-- `node:zlib` for compressed frames, inflated within the longest body
-  taken;
-- `node:fs`, `node:os` and `node:path` for the service and password files.
+#### D11. Exact numbers are BigInt, and a Decimal of the driver's own
 
-The driver uses only APIs Node.js marks stable. A runtime dependency
-would need a decision here, and a reason the platform cannot serve (R-DEP).
-
-#### D6. Exact numbers are BigInt, and a Decimal of the driver's own
-
-The protocol carries an exact number as units, an i128, and a scale, a u32
+The protocol carries an exact number as units, an `i128`, and a scale, a
+`u32`, and a DECFLOAT as a coefficient and an exponent
 (`[PROTOCOL Values]`). JavaScript's `number` holds integers exactly only
-to 2^53, so an exact number is never read as one. One of scale 0 is a
-`bigint`. One of another scale is a `Decimal`, a small immutable type of
-the driver's own of its units, a `bigint`, and its scale, which reads and
-writes its text exactly and turns into a `number` only when asked. A
-library of decimal arithmetic would be a dependency (D5), and a driver
-needs to carry exact numbers, not to compute with them.
+to 2^53, so neither is ever read as one (R-NUM-3). An exact number of
+scale 0 is a `bigint`; one of another scale a `Decimal`, a small
+immutable type of the driver's own of its units, a `bigint`, and its
+scale (`src/codec/decimal.ts`); a DECFLOAT a `DecFloat`, in turborel's
+one form (`src/codec/decfloat.ts`). Each reads and writes its text
+exactly and turns into a `number` only when asked. A library of decimal
+arithmetic would be a dependency (D10), and a driver needs to carry exact
+numbers, not to compute with them.
 
 A `bigint` or a `Decimal` parameter is sent as an exact number and a
-`number` as an approximate one, so no value changes kind silently. The
-codec's mapping of every other value is decided with it, in milestone M1.
+`number` as an approximate one, so no value changes kind silently.
 
-#### D7. One error type, `TurborelError`
+#### D12. One error type, `TurborelError`
 
 Every failure, of a statement or of the connection, the server's or the
-driver's own, is a `TurborelError` (`src/error.ts`), a subclass of `Error`.
-It carries the failure as turborel-client's `Failure` does: its SQLCODE,
-SQLSTATE, message, the rule it cites, and whether the session's
-transaction is active after it, and, as the codec comes to read them, its
-position and diagnostics. An error of Node.js's beneath it, such as a
-socket's, is its `cause`. A program catches one type and reads the
-standard's codes from it, whatever went wrong.
+driver's own, is a `TurborelError` (`src/error.ts`), a subclass of
+`Error`. It carries the failure as turborel-client's `Failure` does: its
+SQLCODE, SQLSTATE, message, the rule it cites, its position, whether the
+session's transaction is active after it, and its diagnostics. An error
+of Node.js's beneath it, such as a socket's, is its `cause`. A failure
+the driver raises itself has turborel's codes: -919 and 08006 for a
+connection whose messages cannot be read, -301 and class 22 for a value
+the protocol cannot carry, -900 and 0A000 for one past turborel's
+limits, and -910 and TB910 for the API misused.
 
-#### D8. The version is the turborel release's; the owner publishes, once every driver is done
-
-The driver has no version scheme of its own. Its version is the number of
-the turborel release it is made for, the server's number, so a program
-pairs a driver and a server by one number. The alpha is 0.0.0, as
-turborel's is, and speaks protocol version 1 (VERSIONING.md).
-
-Nothing goes to npm until every turborel driver is done, and then the
-owner publishes them together. The release workflow runs only by hand,
-builds and checks the package, and has its publish step written but
-disabled.
-
-### Tooling and process
-
-#### D9. TypeScript 6.0, strict, compiled to JavaScript and declarations
+#### D13. TypeScript 6.0, strict, compiled to JavaScript and declarations
 
 The code is TypeScript, checked with `strict`,
 `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`,
 `noPropertyAccessFromIndexSignature`, `noImplicitOverride`,
-`noImplicitReturns` and the checks of unused code on
-(`tsconfig.json`). `verbatimModuleSyntax` and `erasableSyntaxOnly` keep
-it to syntax whose types erase, so no enum and no namespace. `tsc`
-compiles `src/` to `dist/` as ES2024 JavaScript with its `.d.ts`
-declarations beside it (`tsconfig.build.json`), which is what the package
-ships.
+`noImplicitReturns` and the checks of unused code on (`tsconfig.json`).
+`verbatimModuleSyntax` and `erasableSyntaxOnly` keep it to syntax whose
+types erase. `tsc` compiles `src/` to `dist/` as ES2024 JavaScript with
+its `.d.ts` declarations beside it (`tsconfig.build.json`), which is
+what the package ships.
 
 TypeScript is held at 6.0. Its latest release, 7, is not yet one
-typescript-eslint takes, and the type-aware lint (D10) is worth more than
+typescript-eslint takes, and the type-aware lint (D14) is worth more than
 a faster compiler; the driver moves once typescript-eslint takes it.
 `@types/node` is held at Node.js 22's (D3).
 
-#### D10. ESLint with typescript-eslint, and Prettier, rather than Biome
+#### D14. ESLint with typescript-eslint, and Prettier, rather than Biome
 
 ESLint lints with its recommended rules and typescript-eslint's
 `strict-type-checked` and `stylistic-type-checked`, which ask the
-TypeScript compiler for types, so a floating promise, a condition that is
-not a boolean or an unsafe `any` is found. `eslint.config.js` adds the
-rules that hold §3 where a tool can: the sizes, magic numbers, doc
-comments (eslint-plugin-jsdoc) and their TSDoc syntax (eslint-plugin-tsdoc),
-TODO comments, top-level await and `process.exit`. `npm run lint` fails on
-any warning.
+TypeScript compiler for types. `eslint.config.js` adds the rules that
+hold §3 where a tool can: the sizes, magic numbers, doc comments
+(eslint-plugin-jsdoc) and their TSDoc syntax (eslint-plugin-tsdoc), TODO
+comments, top-level await and `process.exit`. `npm run lint` fails on
+any warning (R-LINT-1).
 
 Prettier formats the code and its configuration, 120 columns wide, with
 single quotes. The documents and the files in `.github/` are written by
-hand, in the form turborel's repository keeps them, so Prettier leaves
+hand, in the form Turborel's repository keeps them, so Prettier leaves
 them.
 
-Biome would do both with one tool, but it infers types itself rather than
-asking the TypeScript compiler, and its rules that need types are fewer
-than `strict-type-checked`'s.
+Biome would do both with one tool, but it infers types itself rather
+than asking the TypeScript compiler, and its rules that need types are
+fewer than `strict-type-checked`'s.
 
-#### D11. Tests on `node:test` against the compiled code; coverage by c8
+#### D15. Tests on `node:test` against the compiled code; coverage by c8
 
 The tests are in `test/`, a file `*.test.ts` beside the path of what it
-tests, on Node.js's own runner, `node:test`, with `node:assert/strict`, so
-no test framework is a dependency. `tsc` compiles them, and the library
-with them, to `build/` (`tsconfig.test.json`), and `node --test` runs the
-JavaScript, so the tests run the code as it is compiled. Running
-TypeScript directly is not stable on every release supported (D3).
+tests, on Node.js's own runner, `node:test`, with `node:assert/strict`,
+so no test framework is a dependency (R-TEST-7). `tsc` compiles them,
+and the library and the checks tool with them, to `build/`
+(`tsconfig.test.json`), and `node --test` runs the JavaScript, so the
+tests run the code as it is compiled. Running TypeScript directly is not
+stable on every release supported (D3).
 
 c8 measures coverage from V8's own counts, mapped back to the TypeScript
 by source maps, over every file of `src/`, and fails below the floor in
-`.c8rc.json` (R-COV).
+`.c8rc.json` (D7).
 
-#### D12. The checks are npm scripts, run by a pre-commit hook
+#### D16. The development dependencies
 
-Every check is a script of `package.json`, made only of Node.js and the
-tools, so it runs alike on Linux, macOS and Windows:
-
-| Script | Runs |
-|---|---|
-| `verify` | `format:check`, `lint`, `typecheck`, `build` and `test`, stopping at the first failure |
-| `coverage` | the tests under c8, against the floor |
-| `format` | Prettier, writing |
-| `install-hooks` | points git at `.githooks/`, once per clone |
-
-`.githooks/pre-commit` runs `npm run verify` before each commit. It is
-the one file not in JavaScript, since git runs a hook as a script, and it
-only hands over to npm. There are no shell scripts (R-PROC-5).
-
-#### D13. CI on Linux, macOS and Windows, on every supported Node.js
-
-`verify.yml` runs `npm run verify` on Linux, macOS and Windows, on Node.js
-22, 24 and 26, for every push to main and every pull request, and
-coverage on Linux. A hook can be skipped and checks one platform, so both
-are needed. Each action is pinned by its full commit digest, its version
-in a comment, and Dependabot proposes their updates and the development
-dependencies' each week. `release.yml` runs only by hand (D8). `docs-site.yml` tells turborel.com's documentation
-site, as turborel's does, when `doc/` changes on main or a release is
-made, naming this repository, by the secret `SITE_DISPATCH_TOKEN`.
-
-The live tests against a server come with the transport, milestone M2, on
-the image `ghcr.io/turborel/turborel:nightly`.
-
-#### D14. The development dependencies
-
-The package has no runtime dependency (D5). These are what its checks
+The package has no runtime dependency (D10). These are what its checks
 run on, each pinned by the lock file, each a stable major release by its
 own account, and each under a license that lets it be used so.
 
 | Package | Version | License | For |
 |---|---|---|---|
-| `typescript` | 6.0 | Apache-2.0 | the compiler and the type check (D9) |
+| `typescript` | 6.0 | Apache-2.0 | the compiler and the type checker (D13) |
 | `@types/node` | 22 | MIT | Node.js's types, of the oldest release supported (D3) |
-| `eslint`, `@eslint/js` | 10 | MIT | the lint (D10) |
-| `typescript-eslint` | 8 | MIT | the type-aware lint rules (D10) |
+| `eslint`, `@eslint/js` | 10 | MIT | the linters (D14) |
+| `typescript-eslint` | 8 | MIT | the type-aware lint rules (D14) |
 | `eslint-plugin-jsdoc` | 65 | BSD-3-Clause | every public item documented (R-DOC-1) |
-| `eslint-plugin-tsdoc` | 0.5 | MIT | doc comments in TSDoc's syntax (R-DOC-3) |
-| `prettier` | 3 | MIT | the format (D10) |
-| `c8` | 12 | ISC | coverage (D11) |
+| `eslint-plugin-tsdoc` | 0.5 | MIT | doc comments in TSDoc's syntax (R-DOC-1) |
+| `prettier` | 3 | MIT | the formatter (D14) |
+| `c8` | 12 | ISC | coverage (D15) |
 
 `eslint-plugin-tsdoc` is at 0.5, below 1.0, as it has always been. It is
 TSDoc's own linter, made by the project that defines the syntax, and runs
@@ -283,232 +575,19 @@ only in the lint.
 
 ---
 
-## 2. Project layout
+## 8. References
 
-```
-package.json            the package: name, version, exports (D4), engines
-                        (D3), the scripts (D12), development dependencies
-package-lock.json       their pinned versions
-tsconfig.json           the type check (D9)
-tsconfig.build.json     the package's build, src/ to dist/
-tsconfig.test.json      the tests' build, to build/
-eslint.config.js        the lint (D10)
-.prettierrc.json        the format (D10)
-.c8rc.json              coverage and its floor (D11, R-COV)
-.githooks/pre-commit    verify before each commit (D12)
-README.md               what the driver is; how to build and use it
-RULES.md                this file
-CONFORMANCE.md          the parity matrix: the protocol and turborel-client
-TODO.md                 open work, by milestone
-VERSIONING.md           the version, the alpha, publishing (D8)
-CONTRIBUTING.md         changes, commit messages, pull requests, issues
-SECURITY.md             how to report a vulnerability
-AGENTS.md               the guide for coding agents
-CLAUDE.md               points Claude Code to AGENTS.md
-.github/                CI (workflows/), issue forms, labels, pull
-                        request template, Dependabot
-doc/                    the manual (R-DOC-7), laid out as turborel's
-  README.md             the documentation set
-  user/                 Volume I, the User's Guide, chapters in order
-  client/               Volume II, the API Reference
-  appendix/             the appendices
-src/                    the library
-  index.ts              the package's one entry, its exports
-  error.ts              TurborelError (D7)
-  codec/                the protocol's encoding, without I/O
-test/                   the tests (D11), mirroring src/
-  codec/
-```
-
-The layers of D1 each get a directory of `src/` as they are built:
-`transport/`, `auth/`, `tls/`, `session/`, `statements/`, `lobs/`,
-`copy/`, `settings/`, `pipeline/`, `pool/` and `api/`. The live tests'
-server setup goes in `test/server/`, and fixtures the tests share in
-`test/support/`. `dist/`, `build/` and `coverage/` are made and ignored.
-
----
-
-## 3. Code rules
-
-### R-STYLE: formatting and idiom
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-STYLE-1 | Code and its configuration **shall** be formatted by Prettier. | `npm run format:check` |
-| R-STYLE-2 | Code **shall** pass ESLint with no warning and `tsc` with the checks of D9. | `npm run lint`, `npm run typecheck` |
-| R-STYLE-3 | Names **shall** follow TypeScript's casing: `camelCase` functions and variables, `PascalCase` types and classes, `UPPER_SNAKE_CASE` constants; code implementing a message or field is named after it, as the spec names it. | review |
-| R-STYLE-4 | Exports **shall** be named, never default; a relative import names its file with `.js`; an import of types alone is `import type`. | `no-restricted-exports`, `consistent-type-imports`, `tsc` |
-| R-STYLE-5 | No `enum` or `namespace`; a set of constants is `const`s, or an object `as const`. | `erasableSyntaxOnly` |
-| R-STYLE-6 | No `any`, no non-null assertion `!`, and no `==`. | `strict-type-checked`, `eqeqeq` |
-| R-STYLE-7 | Library code **shall not** print: no `console`. | `no-console` |
-
-### R-SIZE: short functions and files
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-SIZE-1 | A function **shall** have at most 50 lines of code, blank lines and comments not counted. | `max-lines-per-function` |
-| R-SIZE-2 | A source file **shall** have at most 600 lines; split by the spec's sections or by layer. | `max-lines` |
-| R-SIZE-3 | A function **shall** take at most 5 parameters; else an options object. | `max-params` |
-| R-SIZE-4 | A module **should** hold one concept, stated in its file's doc comment. | review |
-| R-SIZE-5 | A function's complexity **shall** be at most 15, and its blocks nested at most 5 deep. | `complexity`, `max-depth` |
-
-### R-DOC: comments and documentation
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-DOC-1 | Every exported item **shall** have a doc comment in TSDoc, with `@param`, `@returns` and `@throws` where they apply. | `jsdoc/require-jsdoc` |
-| R-DOC-2 | Comments **shall** say *why*: the section implemented, the choice made, the invariant relied on. | review |
-| R-DOC-3 | Doc comments **shall** be valid TSDoc. | `tsdoc/syntax` |
-| R-DOC-4 | Behaviour the spec governs **shall** cite it by its heading: `[PROTOCOL Frames]` for a section of `doc/client/05-protocol.md`, `[CLIENT Pipelines]` for one of `doc/client/02-library.md` or `02-library-connections.md`, whose headings differ, an RFC by its section, as `[RFC 5802 §3]`, and a choice of the driver's own `[DESIGN] D<n>`. Each heading is checked against the document before it is cited. | review |
-| R-DOC-5 | No commented-out code, and no `TODO`, `FIXME`, `XXX` or `HACK` comments: open work goes in TODO.md, and code never cites TODO.md. | `no-warning-comments`; review |
-| R-DOC-6 | Every file **shall** start with a doc comment giving its responsibility; a module of `src/` marks it `@packageDocumentation`. | review |
-| R-DOC-7 | A change a program can see **shall** update the manual, `doc/`, in the same commit, its examples run again. The manual keeps turborel's layout, which turborel.com's documentation site reads: each page opens with its `# Title` and a line holding only `[Contents](README.md)`, each folder's `README.md` lists its pages, and every relative link resolves. | review |
-
-### R-CONST: no magic numbers or strings
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-CONST-1 | Numeric literals in `src/` other than `0` or `1` **shall** be named `const`s, documenting the value's source. | `no-magic-numbers` |
-| R-CONST-2 | Every protocol tag **shall** be a named constant, defined once: a message's kind, a data type's and a value's tag, a tail tag, a capability's name, a status name, a mechanism's name, and each SQLSTATE the driver raises. So **shall** strings matched or looked up, such as settings' names. Messages for people are not. | review |
-| R-CONST-3 | Related constants **shall** live together in their layer's module, under a comment naming the section of the spec they come from. | review |
-| R-CONST-4 | Tests may use literal fixtures, such as a frame's bytes; an expected value restating a constant **should** use it. | review |
-
-### R-ERR: errors, not crashes
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-ERR-1 | Library code **shall** throw nothing but a `TurborelError`, and reject no promise with anything else (D7): an error of Node.js's beneath it is its `cause`. It **shall not** end the process. | `no-restricted-properties`; review |
-| R-ERR-2 | A failure **shall** carry the SQLCODE, SQLSTATE, message, rule, position, active flag and diagnostics the server gave; one the driver raises itself, the SQLCODE and SQLSTATE turborel-client gives for the same failure, and a message in plain words. | review; tests |
-| R-ERR-3 | No promise **shall** float: each is awaited, returned, or handed to what handles its rejection. Every `'error'` event of a socket or stream **shall** be listened to, so nothing goes unhandled. | `no-floating-promises`, `no-misused-promises`; review |
-| R-ERR-4 | A failure, a log or a stack **shall** never hold a secret: a password, a SCRAM key or proof, or a cancel key. | review; tests |
-| R-ERR-5 | A connection that fails **shall** close, and every request waiting on it **shall** be rejected with that failure; none is left pending. | review; tests |
-
-### R-NUM: integers and bytes
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-NUM-1 | An integer the protocol writes as `u64`, `i64` or `i128` **shall** be read as a `bigint`, and written from one; a `u32`, a `u8` or an `i32` may be a `number`. A `bigint` turned into a `number` **shall** be shown to be a safe integer first. | review |
-| R-NUM-2 | Bytes **shall** be read and written by `DataView` or `Buffer`'s methods, little-endian said explicitly, never by bitwise operators on numbers wider than 32 bits. | review |
-| R-NUM-3 | A count or length read from a peer **shall** be checked against what follows and the limit taken before anything is allocated by it. | review; tests |
-| R-NUM-4 | An exact number **shall** never pass through a `number` (D6). | review; tests |
-
-### R-SAFE: language subset and resources
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-SAFE-1 | No `eval`, `new Function` or other code made at run time. | `no-eval`, `no-new-func`, `no-implied-eval` |
-| R-SAFE-2 | No module-level mutable state: what lasts belongs to an object a program made, such as a connection, a pool or a key cache. | review |
-| R-SAFE-3 | No top-level `await` (D4). | `no-restricted-syntax` |
-| R-SAFE-4 | A closed connection, cursor or pool **shall** leave nothing running: no socket, timer or listener. | review; tests |
-
-### R-DEP: dependencies
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-DEP-1 | The package **shall** have no runtime dependency (D5). A development dependency **shall** have a row in D14, with its version, license and use. | review |
-| R-DEP-2 | Node.js's own modules come first; a dependency **shall** be production-grade by its own claims, a stable release its makers support. | review |
-| R-DEP-3 | `package-lock.json` **shall** be under version control, and CI installs by `npm ci`. | review |
-
----
-
-## 4. Test rules
-
-### R-TEST: levels and layout
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-TEST-1 | A test **shall** sit at the lowest level that shows its requirement: a codec test of bytes, a test of a layer over a stream the test controls, or a live test against a server. | review |
-| R-TEST-2 | Tests **shall** derive from the spec and turborel-client, not from the code: normal cases, boundaries included, and robustness cases, the exact SQLCODE and SQLSTATE expected. | review |
-| R-TEST-3 | A test's name **shall** say the behaviour checked. | review |
-| R-TEST-4 | Tests **shall** be deterministic and independent: no clock, randomness, network beyond loopback, or order between them. A live test runs against a server on 127.0.0.1 that its setup starts. | review |
-| R-TEST-5 | Every fixed defect **shall** get a regression test that fails without the fix, its doc comment saying so. | review |
-| R-TEST-6 | A fixture or helper shared by test files **shall** be written once, in `test/support/`. Tests use `node:test` and `node:assert/strict`, no other framework. | review |
-
-### R-TRACE: traceability
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-TRACE-1 | Every test **shall** have a doc comment starting `Verifies:` and a tag: `[PROTOCOL <heading>]`, `[CLIENT <heading>]`, `[RFC <n> §<section>]` or `[DESIGN] D<n>` (R-DOC-4). | review |
-| R-TRACE-2 | Code implementing a requirement **shall** cite it (R-DOC-4). | review |
-| R-TRACE-3 | CONFORMANCE.md **shall** change with the change that implements or changes a row. | review |
-
----
-
-## 5. Coverage
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-COV-1 | Coverage **shall** be measured by `npm run coverage`, over every file of `src/`. | c8 |
-| R-COV-2 | Coverage **shall not** fall below the floor in `.c8rc.json`: 95 % of lines, statements and functions, and 90 % of branches. The floor only rises, and a change that raises coverage **should** raise it. | c8, in CI |
-| R-COV-3 | A gap is closed by a test of a requirement, or by removing dead code; never by a test of no requirement. | review |
-
----
-
-## 6. Platforms
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-PLAT-1 | The driver **shall** run on Linux, macOS and Windows, on each Node.js release D3 supports, and CI **shall** check each (D13). | CI |
-| R-PLAT-2 | Code of one platform, such as a Unix socket or a named pipe, **shall** be chosen at run time, and **shall** fail clearly elsewhere, never silently do something else. | review; tests |
-| R-PLAT-3 | Paths **shall** be made by `node:path`, and files read and written with LF line endings (`.gitattributes`). | review |
-
----
-
-## 7. Process and tools
-
-| ID | Rule | Checked by |
-|---|---|---|
-| R-PROC-1 | `npm run verify` **shall** pass before every commit: format, lint, type check, build and every test. CI adds coverage. | pre-commit hook; CI |
-| R-PROC-2 | Every change **shall** be reviewed against the checklist below. | review |
-| R-PROC-3 | Commits **should** be small and single-purpose, in CONTRIBUTING.md's form (`area: summary`, then why), citing rules applied or changed. | review |
-| R-PROC-4 | A change of a threshold **shall** change RULES.md and the configuration holding it together. | review |
-| R-PROC-5 | Project automation **shall** be npm scripts and Node.js, never shell scripts (D12). | review |
-| R-PROC-6 | Nothing **shall** be published to npm but by the owner, as VERSIONING.md says (D8). | review |
-
-The review checklist:
-
-- requirement cited in code (R-DOC-4) and tests (R-TRACE-1);
-- normal and robustness tests (R-TEST-2), a failing-first test for a fix
-  (R-TEST-5);
-- every failure a `TurborelError`, no promise floating, no secret in a
-  failure (R-ERR);
-- no magic numbers or strings, protocol tags named (R-CONST);
-- integers past 32 bits as `bigint`, counts checked before allocation
-  (R-NUM);
-- comments explain why (R-DOC-2);
-- CONFORMANCE.md updated (R-TRACE-3), and TODO.md where open work
-  changed.
-
----
-
-## 8. Where these rules depart from Node.js convention
-
-The driver follows the conventions of Node.js libraries, but where one
-conflicts with a rule above, the rule is kept:
-
-- Node.js's own APIs throw a `TypeError` or `RangeError` for an argument
-  of the wrong type or range. The driver throws a `TurborelError` for
-  every failure, an argument's too, with the SQLCODE and SQLSTATE
-  turborel-client gives for it (R-ERR-1), so a program catches one type.
-- Libraries commonly leave function and file length to taste. These are
-  bounded (R-SIZE).
-- Libraries commonly read 64-bit integers as `number` where they expect
-  them small. The driver reads every one as a `bigint` (R-NUM-1).
-
----
-
-## 9. References
-
-- turborel, `doc/client/05-protocol.md`, *The Native Protocol*, version
-  1: the requirements of the codec and every message.
-- turborel, `doc/client/02-library.md` and `02-library-connections.md`,
-  and the crates turborel-client and turborel-protocol: the features to
-  match, and the reference where the spec is silent.
-- RFC 5802 and RFC 7677, SCRAM and SCRAM-SHA-256; RFC 5929 and RFC 9266,
-  the `tls-server-end-point` and `tls-exporter` channel bindings; RFC 1950,
-  the zlib stream.
-- Node.js's documentation of its release schedule, of modules and
-  `require(esm)`, and of `node:net`, `node:tls`, `node:crypto`,
-  `node:zlib` and `node:test`.
-- The TypeScript handbook and its compiler options; typescript-eslint's
-  shared configurations; TSDoc.
+- Turborel, `doc/client/05-protocol.md`, *The Native Protocol*,
+  version 1: the requirements of the codec and every message.
+- Turborel, `doc/client/02-library.md`, *The Client Library*, and
+  `doc/client/02-library-connections.md`, *Settings, Pipelines and
+  Pools*, and the crates turborel-client and turborel-protocol: the
+  features to match, and the reference where the spec is silent or
+  differs.
+- Turborel, `RULES.md` D89, the JSON value's binary tree, and D184, the
+  UUID's tag.
+- RFC 1950, *ZLIB Compressed Data Format Specification*; RFC 5802 and
+  RFC 7677, SCRAM and SCRAM-SHA-256; RFC 5929 and RFC 9266, the
+  `tls-server-end-point` and `tls-exporter` channel bindings.
+- The standards of JavaScript and of its database interface, named in
+  D2 and D3.

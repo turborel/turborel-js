@@ -2,4 +2,8 @@
 
 [Contents](README.md)
 
-Each SQLSTATE class, what it means to a program, and how the driver raises it: always as a `TurborelError`, with the SQLCODE and SQLSTATE turborel-client gives for the same failure. Milestone M1 adds the connection failures the codec raises, and milestone M3 the rest.
+This appendix will list the SQLSTATE classes the driver reports, those
+it raises itself, such as SQLCODE -919 and SQLSTATE 08006 for a
+connection whose messages cannot be read, and those the server sends,
+how each reaches a program as the driver's error, and which end the
+connection. It is filled at milestone M3.

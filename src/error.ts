@@ -1,5 +1,5 @@
 /**
- * The driver's one error type (RULES.md D7, R-ERR-2): every failure, the
+ * The driver's one error type (RULES.md D12, R-ERR-2): every failure, the
  * server's or the driver's own, is a {@link TurborelError} carrying its
  * SQLCODE and SQLSTATE, as turborel-client's `Failure` does.
  *

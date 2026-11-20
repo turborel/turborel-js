@@ -9,7 +9,7 @@
     "driver",
     "client"
   ],
-  "homepage": "https://github.com/turborel/turborel-js#readme",
+  "homepage": "https://turborel.com/docs/drivers/javascript/",
   "bugs": {
     "url": "https://github.com/turborel/turborel-js/issues"
   },
@@ -43,7 +43,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build:test": "npm run rm -- build && tsc -p tsconfig.test.json",
-    "test": "npm run build:test && node --test \"build/test/**/*.test.js\"",
+    "check": "npm run build:test && node build/tools/check.js",
+    "test": "npm run build:test && node build/tools/check.js && node --test \"build/test/**/*.test.js\"",
     "coverage": "npm run build:test && c8 node --test \"build/test/**/*.test.js\"",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm run test",
     "install-hooks": "git config core.hooksPath .githooks",

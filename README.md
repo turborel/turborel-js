@@ -5,48 +5,53 @@
     </picture>
 </p>
 
-> turborel-js is in alpha, meaning, version 0.0.0. Anything may change
-> from one build to the next, its API above all. Its version is the
-> number of the turborel release it is made for, and the alpha speaks
-> turborel's native protocol, version 1. See
-> [VERSIONING.md](VERSIONING.md).
+> turborel-js is in alpha, meaning, version 0.0.0. Its version is the
+> number of the Turborel release it is made for, and the alpha is made
+> for Turborel 0.0.0, which speaks protocol version 1. Anything may
+> change from one build to the next, API and behaviour alike. See
+> [VERSIONING.md](VERSIONING.md). The latest Turborel alpha is built for
+> Linux, macOS and Windows as the pre-release
+> [nightly](https://github.com/turborel/turborel/releases/tag/nightly),
+> and as the image `ghcr.io/turborel/turborel:nightly`.
 
 turborel-js is the JavaScript driver for
-[turborel](https://github.com/turborel/turborel), a relational database
-system. It connects a Node.js program to `turboreld`, turborel's server,
-over turborel's [native
+[Turborel](https://github.com/turborel/turborel), a relational database
+system. It connects a JavaScript program to a Turborel server,
+`turboreld`, over Turborel's [native
 protocol](https://github.com/turborel/turborel/blob/main/doc/client/05-protocol.md),
-which it speaks itself, in TypeScript compiled to JavaScript, with no
-native code and no runtime dependency beyond Node.js's own modules.
+version 1, which it speaks itself, in TypeScript compiled to JavaScript, with no native code and no runtime dependency beyond Node.js's own modules.
 
-It is built to do everything turborel's own client library,
-turborel-client, does: TLS and SCRAM, prepared statements and cursors,
-large objects, bulk copy, settings from a URI, the environment and
-service files, several servers, pipelines and pools. What it does so far
-is in [CONFORMANCE.md](CONFORMANCE.md), and what it does not yet in
-[TODO.md](TODO.md). Today it holds its repository's kit, its frame codec
-and its error type; nothing that connects.
+Its standard interface is a Promise-based API for Node.js, with TypeScript types, loaded as an ES module or by `require`. Beneath it is a low-level
+client built to do all that Turborel's own client library,
+turborel-client, does: TCP, Unix sockets and Windows named pipes, TLS,
+SCRAM-SHA-256 and SCRAM-SHA-256-PLUS, prepared statements and cursors,
+large objects, bulk copy, import and export, settings from a URI, the
+environment and service and password files, several servers, pipelines
+and pools.
 
-## What it needs
+The driver is built in milestones, M0 to M8, and does not connect to a
+server yet. [CONFORMANCE.md](CONFORMANCE.md) shows what is done, row by
+row, and [TODO.md](TODO.md) what is open.
 
-- Node.js 22.12 or later: 22, 24 and 26 are tested, on Linux, macOS and
-  Windows.
-- A turborel server of the same release.
+## Requirements
 
-It runs in Node.js and in what embeds it, such as Electron. A browser
-cannot open a TCP connection, so the driver does not run in one.
+- Node.js 22.12 or later, on Linux, macOS or Windows ([RULES.md](RULES.md) D3).
+- 22, 24 and 26 are tested. A browser cannot open a TCP connection, so the driver does not run in one.
+- A Turborel server of the same release, which speaks protocol version 1
+  ([running the server](https://github.com/turborel/turborel/blob/main/doc/operator/02-turboreld.md)).
 
-## Install
+## Installing
 
-The package is not yet published to npm: nothing is published until
-every turborel driver is done. Build it from source:
+No package is published yet. The driver's package, `turborel`, goes to
+npm only once every Turborel driver is done, with the others
+([VERSIONING.md](VERSIONING.md#publishing)). Until then, build the
+driver from source:
 
 ```
 git clone https://github.com/turborel/turborel-js.git
 cd turborel-js
 npm ci
 npm run build          # the package, in dist/
-npm run verify         # every check a change must pass
 ```
 
 A program then installs it from the clone, as
@@ -55,8 +60,9 @@ CommonJS program loads with `require` as well.
 
 ## A first query
 
-This is what the API will be, built in milestone M7 and checked in M8;
-none of it runs yet (RULES.md D2).
+This is what the standard API will be once milestone M7 builds it and
+M8's audit checks it. None of it runs yet, and its names may change
+until then.
 
 ```js
 import { connect } from 'turborel';
@@ -72,17 +78,33 @@ try {
 }
 ```
 
-## Documents
+## The manual
 
-- [doc/](doc/README.md): the manuals, a User's Guide, an API Reference
-  and appendices, which turborel.com's documentation site publishes.
-- [VERSIONING.md](VERSIONING.md): its version, the alpha, and publishing.
-- [CONFORMANCE.md](CONFORMANCE.md): what is implemented of the protocol
-  and of turborel-client's features.
-- [RULES.md](RULES.md): how the driver is designed, written and verified.
-- [TODO.md](TODO.md): open work.
-- [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md):
-  contributing, and reporting an issue or a vulnerability.
-- [LICENSE](LICENSE) and [TRADEMARK.md](TRADEMARK.md): the code is
-  under the BSD-2-Clause Plus Patent License; the name Turborel and its
-  logos are not, and TRADEMARK.md says how they may be used.
+[doc/](doc/README.md) is the manual: a User's Guide, an API Reference
+and Appendices, published at
+https://turborel.com/docs/drivers/javascript/. Each
+chapter is written as the milestone that fills it lands. The SQL a
+program sends, and the server, are described in Turborel's own manual,
+[The Turborel Documentation Set](https://github.com/turborel/turborel/blob/main/doc/README.md).
+[VERSIONING.md](VERSIONING.md) tells how the driver's releases are
+numbered and published.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before making a change: how a
+change is made, its commit message, pull requests and issues. Every
+change passes `npm run verify`. [RULES.md](RULES.md) says how the
+driver is designed, written and verified,
+[CONFORMANCE.md](CONFORMANCE.md) is the parity matrix every Turborel
+driver keeps, and [TODO.md](TODO.md) lists open work.
+
+## Security
+
+Report a vulnerability privately, never in a public issue, as
+[SECURITY.md](SECURITY.md) says.
+
+## License and trademark
+
+The code is under the BSD-2-Clause Plus Patent License, in
+[LICENSE](LICENSE). The name Turborel and its logos are not:
+[TRADEMARK.md](TRADEMARK.md) says how they may be used.

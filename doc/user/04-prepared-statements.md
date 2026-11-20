@@ -1,5 +1,9 @@
-# Prepared Statements and Cursors
+# Prepared Statements
 
 [Contents](README.md)
 
-How a statement is prepared once and executed many times with parameters, how its parameters and columns are described, and how a cursor reads a large result as an async iterator, a batch at a time, several at once if wished. Milestone M3 fills this chapter.
+This chapter will tell how a program prepares a statement once, its
+parameters written `?`, and runs it many times; how it reads a query's
+rows through a cursor, in parts, several cursors of one statement at
+once; and how it describes a statement and lets it go. It is filled at
+milestone M3.

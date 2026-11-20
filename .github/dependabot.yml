@@ -1,4 +1,4 @@
-# Updates of the development dependencies (RULES.md D14) and of the actions
+# Updates of the development dependencies (RULES.md D16) and of the actions
 # the workflows pin by digest. Each comes as a pull request that verify
 # checks like any other.
 version: 2
@@ -11,7 +11,7 @@ updates:
       lint:
         patterns: ["eslint", "@eslint/*", "eslint-plugin-*", "typescript-eslint"]
     ignore:
-      # typescript-eslint takes TypeScript below 6.1 (D9); a newer
+      # typescript-eslint takes TypeScript below 6.1 (D13); a newer
       # TypeScript waits until it takes that.
       - dependency-name: typescript
         update-types: ["version-update:semver-minor", "version-update:semver-major"]

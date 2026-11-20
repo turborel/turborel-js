@@ -1,6 +1,6 @@
 /**
  * Tests of the driver's exact and decimal floating-point numbers, which
- * carry the protocol's value tags 2 and 15 with no loss (RULES.md D6).
+ * carry the protocol's value tags 2 and 15 with no loss (RULES.md D11).
  */
 
 import assert from 'node:assert/strict';
@@ -24,7 +24,7 @@ test('an exact number holds an i128 of units and a u32 scale', () => {
   }
 });
 
-/** Verifies: [DESIGN] D6 an exact number reads and writes its text exactly, every digit kept. */
+/** Verifies: [DESIGN] D11 an exact number reads and writes its text exactly, every digit kept. */
 test('an exact number is its text', () => {
   const cases: [string, bigint, number, string][] = [
     ['-12.50', -1250n, 2, '-12.50'],
@@ -44,7 +44,7 @@ test('an exact number is its text', () => {
   }
 });
 
-/** Verifies: [DESIGN] D6 exact numbers compare by value, whatever their scales, and turn into a number only when asked. */
+/** Verifies: [DESIGN] D11 exact numbers compare by value, whatever their scales, and turn into a number only when asked. */
 test('exact numbers compare by value', () => {
   assert.equal(Decimal.parse('1.50').equals(Decimal.parse('1.5')), true);
   assert.equal(Decimal.parse('1.5').equals(Decimal.parse('1.51')), false);
@@ -67,7 +67,7 @@ test('a DECFLOAT has one form', () => {
   assert.equal(DecFloat.ofCanonical(1n, 6145), undefined, 'out of range');
 });
 
-/** Verifies: [DESIGN] D6 a DECFLOAT is rounded half to even to 34 digits, a carry raising its exponent. */
+/** Verifies: [DESIGN] D11 a DECFLOAT is rounded half to even to 34 digits, a carry raising its exponent. */
 test('a DECFLOAT rounds half to even', () => {
   const evenStays = DecFloat.of(12345678901234567890123456789012345n, 0);
   assert.deepEqual([evenStays.coefficient, evenStays.exponent], [1234567890123456789012345678901234n, 1]);
@@ -80,7 +80,7 @@ test('a DECFLOAT rounds half to even', () => {
   assert.equal(DecFloat.of(-(10n ** 35n - 1n), 0).coefficient, -1n);
 });
 
-/** Verifies: [DESIGN] D6 a DECFLOAT's adjusted exponent is from -6143 to 6144, decimal128's, and past it is 22003. */
+/** Verifies: [DESIGN] D11 a DECFLOAT's adjusted exponent is from -6143 to 6144, decimal128's, and past it is 22003. */
 test('a DECFLOAT is bounded by its adjusted exponent', () => {
   assert.equal(DecFloat.of(1n, 6144).exponent, 6144);
   assert.equal(DecFloat.of(1n, -6143).exponent, -6143);
@@ -90,7 +90,7 @@ test('a DECFLOAT is bounded by its adjusted exponent', () => {
   assert.throws(() => DecFloat.of(1n, 0.5), isFailure(-910, 'TB910'));
 });
 
-/** Verifies: [DESIGN] D6 a DECFLOAT reads its text and writes it as turborel does, plainly within its digits, else with E. */
+/** Verifies: [DESIGN] D11 a DECFLOAT reads its text and writes it as turborel does, plainly within its digits, else with E. */
 test('a DECFLOAT is its text', () => {
   assert.deepEqual(
     [DecFloat.parse('1.5E3').coefficient, DecFloat.parse('1.5E3').exponent, DecFloat.parse('.25e-3').exponent],

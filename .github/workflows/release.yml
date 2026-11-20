@@ -46,8 +46,13 @@ jobs:
           path: ${{ runner.temp }}/package/turborel-*.tgz
           if-no-files-found: error
       # Disabled: the owner enables this step, and gives the job
-      # `id-token: write` for npm's trusted publishing, when every driver
-      # is done and the packages go up together.
-      - name: Publish to npm
+      # `contents: write` for the tag and `id-token: write` for npm's
+      # trusted publishing, when every driver is done and the packages go
+      # up together (VERSIONING.md).
+      - name: Tag the release and publish it to npm
         if: ${{ false }}
-        run: npm publish --provenance --access public
+        run: |
+          version=$(node -p "require('./package.json').version")
+          git tag "v$version"
+          git push origin "v$version"
+          npm publish --provenance --access public

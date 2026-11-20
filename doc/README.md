@@ -1,60 +1,69 @@
 # The turborel-js Documentation Set
 
-turborel-js is the JavaScript driver for turborel, a relational database
-system. It connects a program on Node.js to `turboreld`, turborel's
-server, over turborel's native protocol, which it speaks itself, with no
-native code and no runtime dependency. This set of manuals describes it
-for those who write such programs. The SQL a program sends, and the
-server, are described in turborel's own manuals ([The Turborel
-Documentation Set](https://github.com/turborel/turborel/blob/main/doc/README.md)).
+turborel-js is the JavaScript driver for Turborel, a relational database
+system. It connects a JavaScript program to a Turborel server,
+`turboreld`, over Turborel's native protocol, version 1, which it speaks
+itself, in TypeScript compiled to JavaScript, with no native code and no runtime dependency beyond Node.js's own modules. Its standard interface is a Promise-based API for Node.js, with TypeScript types, loaded as an ES module or by `require`, over a
+low-level client built to do all that Turborel's own client library
+does. This set of manuals describes it for those who write programs with
+it. The SQL a program sends, and the server, are described in Turborel's
+own manuals,
+[The Turborel Documentation Set](https://github.com/turborel/turborel/blob/main/doc/README.md).
 
 turborel-js is in alpha: what these manuals describe may change in any
-release until 1.0.0 ([Versions](appendix/d-versions.md)). Each change
-updates the pages it touches, so the manuals describe the release they
-come with. The driver is built in milestones, and a chapter says which
-milestone fills it until it does.
+release until 1.0.0 ([Versions](appendix/d-versions.md)). The driver is
+built in milestones, and until a chapter's milestone lands, the chapter
+says what it will cover. Each change updates the pages it touches, so
+the manuals describe the release they come with.
 
 ## The volumes
 
 | Volume | For | |
 |---|---|---|
-| [I. User's Guide](user/README.md) | Anyone who writes a program that uses turborel-js | Installing, connecting, statements, transactions, large objects, copying, pipelines and pools, settings, errors, chapter by chapter |
-| [II. API Reference](client/README.md) | The same, looking something up | The standard API and the low-level client, a page for each main interface or module |
-| [Appendices](appendix/README.md) | Everyone | Types, errors, settings, versions |
+| [I. User's Guide](user/README.md) | Anyone who writes a JavaScript program against Turborel | Installing, connecting, queries, prepared statements, transactions, large objects, copying, pipelines and pools, settings and errors, chapter by chapter |
+| [II. API Reference](client/README.md) | The same, looking something up | The standard API, then the low-level client, a page for each main interface or module |
+| [Appendices](appendix/README.md) | Everyone | Types, errors, settings and versions |
 
-Read the User's Guide from the start to learn turborel-js; turn to the
+Read the User's Guide from the start to learn the driver; turn to the
 API Reference and the appendices to look a thing up.
 
 ## Conventions
 
-**Examples** of JavaScript and of SQL are set in a fixed-width font. Key
-words of SQL are in upper case, names in upper case unless delimited, as
-the standard folds them:
+**Examples** of JavaScript and of SQL are set in a fixed-width font.
+SQL key words are in upper case, names in upper case unless delimited,
+as the standard folds them, and a dynamic parameter is `?`:
 
-```js
-const { rows } = await conn.query('SELECT NAME, SALARY FROM STAFF WHERE SALARY > ?', [50000n]);
+```sql
+SELECT NAME, SALARY FROM STAFF WHERE SALARY > ?
 ```
 
-**Results** of examples follow them in comments, as the program prints
-them.
+**Results** of examples follow them, as the program prints them.
 
-**Citations** name the section of a document a rule comes from:
-[PROTOCOL Frames] is the section *Frames* of turborel's native protocol
-(`doc/client/05-protocol.md` in turborel), and [CLIENT Pipelines] the
-section *Pipelines* of turborel's client library
-(`doc/client/02-library-connections.md`).
+**Citations** name the section of Turborel's documents a behaviour comes
+from: [PROTOCOL Frames] is the section "Frames" of
+[The Native Protocol](https://github.com/turborel/turborel/blob/main/doc/client/05-protocol.md);
+[CLIENT Pipelines] is the section "Pipelines" of Turborel's client
+library chapters,
+[The Client Library](https://github.com/turborel/turborel/blob/main/doc/client/02-library.md)
+and
+[Settings, Pipelines and Pools](https://github.com/turborel/turborel/blob/main/doc/client/02-library-connections.md).
+The rows each page fulfils are those of the driver's parity matrix,
+[CONFORMANCE.md](../CONFORMANCE.md).
 
 **Errors** are given by SQLSTATE, the code the SQL standard defines, and
-SQLCODE, the older number, as turborel gives them;
-[Appendix B](appendix/b-errors.md) lists them by class.
+SQLCODE, the older number, as Turborel gives them;
+[Appendix B](appendix/b-errors.md) maps them to the driver's error.
 
-## Pages of reference
+### Pages of reference
 
 A page of the API Reference has these sections, in this order:
 
-- **NAME**: the function or class, and what it does in a line.
-- **SYNOPSIS**: its signature, in TypeScript.
+- **NAME**: the interface, class, module or function, and what it does
+  in a line.
+- **SYNOPSIS**: its declaration, in JavaScript.
 - **DESCRIPTION**: what it does.
 - **ERRORS**: each way it fails, by SQLSTATE.
 - **EXAMPLES**: programs, and what they print.
+- **STANDARD**: the sections of Turborel's documents it follows, and,
+  for the standard API, the specification of the interface.
 - **SEE ALSO**: related pages.

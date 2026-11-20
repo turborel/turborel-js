@@ -1,5 +1,5 @@
 /**
- * The driver's exact number of a scale (RULES.md D6): units, a `bigint`
+ * The driver's exact number of a scale (RULES.md D11): units, a `bigint`
  * within the protocol's `i128`, divided by ten to the scale, a `u32`, as
  * the protocol's value tag 2 carries it (`[PROTOCOL Values]`).
  *

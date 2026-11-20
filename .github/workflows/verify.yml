@@ -1,6 +1,6 @@
 # Every check a change must pass (RULES.md R-PROC-1), on each platform and
-# each Node.js release the driver supports (D3, D13), plus coverage against
-# its floor (R-COV). `npm ci` installs the development dependencies the
+# each Node.js release the driver supports (D3, D4), plus coverage against
+# its floor (R-COV-2). `npm ci` installs the development dependencies the
 # lock file pins.
 name: verify
 

@@ -1,6 +1,6 @@
 {
   // The tests and the library they import, compiled to build/ for node:test,
-  // with source maps so coverage is told of the TypeScript (RULES.md D11).
+  // with source maps so coverage is told of the TypeScript (RULES.md D15).
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
@@ -9,5 +9,5 @@
     "sourceMap": true,
     "newLine": "lf"
   },
-  "include": ["src", "test"]
+  "include": ["src", "test", "tools"]
 }

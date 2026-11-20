@@ -2,4 +2,7 @@
 
 [Contents](README.md)
 
-How a program sends requests without waiting for each reply, and how a pool shares a bounded set of connections among a program's tasks, checking and resetting each as it comes back. Milestone M6 fills this chapter.
+This chapter will tell how a program sends a batch of requests in one
+round trip by a pipeline, stopping at its first failure if asked; shares
+a bounded set of connections by a pool; and holds several named
+connections by the SQL-agent. It is filled at milestone M6.

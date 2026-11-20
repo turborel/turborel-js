@@ -2,4 +2,7 @@
 
 [Contents](README.md)
 
-How many rows are copied into a table at once, how CSV and tab-separated files are imported, and how a query's rows are exported as CSV or as the protocol's own frames. Milestone M4 fills this chapter.
+This chapter will tell how a program copies rows into a table in bulk,
+all or nothing; imports CSV and tab-separated text; and exports a
+query's rows as CSV or as the protocol's own frames, read back with
+every value as it was. It is filled at milestone M4.

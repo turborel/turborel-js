@@ -1,4 +1,4 @@
-# Prettier formats the code and its configuration (RULES.md D10). The
+# Prettier formats the code and its configuration (RULES.md D14). The
 # documents and the files in .github/ are written by hand, in the form
 # turborel's own repository keeps them; npm writes its lock file.
 *.md

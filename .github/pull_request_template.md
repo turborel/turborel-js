@@ -39,8 +39,9 @@ the numbers. Otherwise "none claimed". -->
 ## Checklist (RULES.md §7)
 
 - [ ] One logical change per commit, each passing `npm run verify`
-- [ ] Each test cites what it verifies (R-TRACE-1); a failing-first test for a fix (R-TEST-7)
-- [ ] Every failure a `TurborelError`; no uncaught exception, unhandled rejection or `process.exit` (R-ERR)
+- [ ] Each test cites what it verifies (R-TRACE-1); a failing-first test for a fix (R-TEST-6)
+- [ ] Every failure a `TurborelError`; no uncaught exception, unhandled rejection or `process.exit` (R-ERR, R-ASYNC)
 - [ ] No magic numbers; protocol tags named constants (R-CONST); public items documented in TSDoc (R-DOC-1)
-- [ ] No new dependency without a decision (R-DEP)
+- [ ] Every length a server sends bounded, no secret disclosed (R-SAFE)
+- [ ] No new dependency without a decision (R-DEP-1)
 - [ ] CONFORMANCE.md, RULES.md, TODO.md and doc/ updated where they change

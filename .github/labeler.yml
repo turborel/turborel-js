@@ -60,7 +60,7 @@ area/ci:
 
 area/build:
   - changed-files:
-      - any-glob-to-any-file: ["package.json", "package-lock.json", "tsconfig.json", "tsconfig.*.json", "eslint.config.js", ".prettierrc.json", ".prettierignore", ".c8rc.json", ".githooks/**", ".gitignore", ".gitattributes"]
+      - any-glob-to-any-file: ["package.json", "package-lock.json", "tsconfig.json", "tsconfig.*.json", "eslint.config.js", ".prettierrc.json", ".prettierignore", ".c8rc.json", ".githooks/**", ".gitignore", ".gitattributes", "tools/**", "test/tools/**"]
 
 dependencies:
   - changed-files:

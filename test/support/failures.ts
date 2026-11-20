@@ -1,6 +1,6 @@
 /**
  * Predicates of the failures tests expect, shared by the test files
- * (RULES.md R-TEST-6).
+ * (RULES.md R-TEST-7).
  */
 
 import { TurborelError } from '../../src/error.js';
