@@ -11,10 +11,13 @@
  * This is the alpha, version 0.0.0, the number of the turborel release it
  * is made for. Its Promise-based API of connections, queries, prepared
  * statements, cursors as async iterators and pools (RULES.md D2) is built
- * milestone by milestone. Until then it exports its error type alone.
+ * milestone by milestone. Until then it exports its error type and the
+ * types its values are read as.
  *
  * @packageDocumentation
  */
 
 export { TurborelError } from './error.js';
-export type { TurborelErrorOptions } from './error.js';
+export type { Diagnostics, TurborelErrorOptions } from './error.js';
+export { Decimal } from './codec/decimal.js';
+export { DecFloat } from './codec/decfloat.js';
