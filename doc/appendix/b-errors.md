@@ -33,7 +33,9 @@ Appendix A, SQLSTATE and SQLCODE, lists every one the server sends.
 | SQLSTATE | SQLCODE | When |
 |---|---|---|
 | 08006 | -919 | No connection made, in time; a wait that ran out; a message that cannot be read; a reply out of turn; a request of a capability not granted, refused before it is sent |
-| 28000 | -919 | A password or SCRAM over plain TCP, refused before connecting; a SCRAM exchange whose server did not prove itself |
+| 08001 | -919 | Settings that cannot be read, or name no user; a service file that cannot be read, or has no section of the name; no server kept of several, or one not of the role asked |
+| 08006 | -919 | Attributes past their bounds, refused before they are sent, the connection kept: the code the server would fail the connection with |
+| 28000 | -919 | A password or SCRAM over plain TCP, refused before connecting; a SCRAM exchange whose server did not prove itself; channel binding required that cannot be |
 | 2200N | -301 | An XML value's text, read for its nodes, that is not well-formed XML content |
 | 22000 | -301 | A large object sent whole freed or held; an import's source that cannot be read, or a record of too many or too few fields |
 | 22001 | -301 | A string an import assigns to a character column that is too long for it |

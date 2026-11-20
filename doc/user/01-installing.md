@@ -36,7 +36,8 @@ const { TurborelError } = require('turborel');
 ```
 
 Today the package exports its low-level client: `connectTo` and the
-connections it makes ([Connecting](02-connecting.md)), the statements
+connections it makes ([Connecting](02-connecting.md)), or settings make
+([Settings](09-settings.md)), the statements
 they run ([Running Queries](03-queries.md)), their large objects, copies,
 imports and exports ([Copying, Importing and Exporting](07-copying.md)),
 its error type,

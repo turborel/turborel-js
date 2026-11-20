@@ -32,7 +32,8 @@ and pools.
 The driver is built in milestones, M0 to M8. So far its low-level
 client connects by every transport and mechanism and runs statements,
 prepared or not, with their cursors, large objects, copies, imports and
-exports; the standard API comes at M7.
+exports, and connects by settings, a URI and their files to one of
+several servers; the standard API comes at M7.
 [CONFORMANCE.md](CONFORMANCE.md) shows what is done, row by
 row, and [TODO.md](TODO.md) what is open.
 

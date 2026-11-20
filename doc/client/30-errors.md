@@ -63,6 +63,7 @@ turborel-client gives the same failure.
 | SQLSTATE | SQLCODE | When the driver raises it |
 |---|---|---|
 | 08006 | -919 | A message that cannot be read: a frame cut short, a body past the limit taken, a field malformed |
+| 08001 | -919 | Settings that cannot be read, or by which no connection is made ([Settings](26-settings.md)) |
 | 22003 | -301 | A number past what the protocol carries, as an exact number's units past 128 bits |
 | 22021 | -301 | A string holding a lone surrogate, which is no Unicode character |
 | 0A000 | -900 | A value past turborel's limits, as a JSON value nested past 128 levels |
