@@ -68,7 +68,7 @@ test('attributes are bounded', () => {
     [['N', 'v'.repeat(1025)]],
     [['é'.repeat(33), '']],
   ] as (readonly (readonly [string, string])[])[]) {
-    assert.throws(() => bytes(query(bad)), isFailure(-910, 'TB910'));
+    assert.throws(() => bytes(query(bad)), isFailure(-919, '08006'));
   }
 });
 

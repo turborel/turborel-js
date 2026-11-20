@@ -9,7 +9,7 @@
 
 import type { Reader } from './reader.js';
 import type { Writer } from './writer.js';
-import { apiMisuse } from '../error.js';
+import { connectionFailure } from '../error.js';
 
 /** Tag 1: attributes, of Hello, Query and Execute. */
 export const ATTRIBUTES = 1;
@@ -63,12 +63,12 @@ function attributeFits([name, value]: Attribute): boolean {
  *
  * @param w - the writer
  * @param attributes - each name and value
- * @throws {@link TurborelError} TB910 past 32 attributes, or one past its bounds, which the server would refuse
+ * @throws {@link TurborelError} 08006 past 32 attributes, or one past its bounds, the code the server would fail the connection with; nothing is sent, and the connection goes on
  */
 export function writeAttributes(w: Writer, attributes: readonly Attribute[]): void {
   if (attributes.length === 0) return;
   if (attributes.length > MAX_ATTRIBUTES || !attributes.every(attributeFits)) {
-    throw apiMisuse(
+    throw connectionFailure(
       `a message takes at most ${String(MAX_ATTRIBUTES)} attributes, each name 1 to ${String(MAX_ATTRIBUTE_NAME)} bytes and value at most ${String(MAX_ATTRIBUTE_VALUE)}`,
     );
   }
