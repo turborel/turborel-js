@@ -21,3 +21,13 @@ export { TurborelError } from './error.js';
 export type { Diagnostics, TurborelErrorOptions } from './error.js';
 export { Decimal } from './codec/decimal.js';
 export { DecFloat } from './codec/decfloat.js';
+export type {
+  CharUnits,
+  DataType,
+  IntervalField,
+  Qualifier,
+  RowField,
+  StructuredName,
+  TypeName,
+  XmlSchemaName,
+} from './codec/types.js';
