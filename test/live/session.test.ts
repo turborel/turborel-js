@@ -320,10 +320,6 @@ test('statuses in their order', async (t) => {
   assert.deepEqual(login.slice(0, TABLE.length), TABLE);
   assert.ok(login.includes('SESSION.TIME_ZONE') && login.includes('TRANSACTION.ISOLATION'));
   const query = (sql: string): Request => ({ kind: 'query', sql, ends: true, attributes: [], multi: false });
-  // The session's first statement is not checked: turboreld at b40bd830
-  // tells AUTHORIZATION, SCHEMA, READ_ONLY, SERVER_READ_ONLY and OWNER
-  // again after it, changed or not.
-  await statusesOf(frames, query('VALUES 1'), 'complete');
   assert.deepEqual(await statusesOf(frames, query('VALUES 1'), 'complete'), [], 'a statement that changed nothing');
   const zone = "SET TIME ZONE INTERVAL '+02:00' HOUR TO MINUTE";
   assert.deepEqual(await statusesOf(frames, query(zone), 'complete'), ['SESSION.TIME_ZONE']);
