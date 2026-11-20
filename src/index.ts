@@ -39,6 +39,8 @@ export {
 } from './codec/values.js';
 export type { LobKind, Moment, Value } from './codec/values.js';
 export { Json, JsonObject } from './codec/json.js';
+export type { Column, Declared, Parameter } from './codec/composite.js';
+export { columnType, columnTypeName, typeName, typeWritten } from './codec/declared.js';
 export type { JsonInput, JsonItem } from './codec/json.js';
 export type {
   CharUnits,
@@ -109,6 +111,7 @@ export { Agent } from './agent/agent.js';
 export type { Connector } from './agent/agent.js';
 export { Client, PreparedStatement, connect } from './api/client.js';
 export type { ConnectOptions, Result, RunOptions } from './api/client.js';
+export type { ResultColumn } from './api/columns.js';
 export { Cursor, DEFAULT_CURSOR_BATCH } from './api/cursor.js';
 export type { CursorReadOptions } from './api/cursor.js';
 export { ClientPool, createPool } from './api/pool.js';

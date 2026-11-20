@@ -14,7 +14,7 @@
 import type { Readable } from 'node:stream';
 
 import { Cursor, type CursorReadOptions } from './cursor.js';
-import type { Column } from '../codec/composite.js';
+import { type ResultColumn, resultColumns } from './columns.js';
 import type { Completion } from '../codec/replies.js';
 import type { Lob, LobKind, LobLocator, Value } from '../codec/values.js';
 import { TurborelError, apiMisuse } from '../error.js';
@@ -45,7 +45,7 @@ export interface Result {
   /** A query's rows, each a value for each column; none of another statement. */
   readonly rows: readonly (readonly Value[])[];
   /** A query's columns; none of another statement. */
-  readonly columns: readonly Column[];
+  readonly columns: readonly ResultColumn[];
   /** The rows a statement changed or a query returned, as the server counts them, where it does. */
   readonly rowCount: bigint | undefined;
   /** Its completion: its SQLCODE and SQLSTATE, a warning's among them; of a query, undefined. */
@@ -78,7 +78,12 @@ export function settingsOf(settings: string | ConnectOptions): Settings {
  */
 function resultOf(outcome: Outcome, conn: Connection): Result {
   if (outcome.kind === 'rows') {
-    return { rows: outcome.rows, columns: outcome.columns, rowCount: conn.rowsAffected, completion: undefined };
+    return {
+      rows: outcome.rows,
+      columns: resultColumns(outcome.columns),
+      rowCount: conn.rowsAffected,
+      completion: undefined,
+    };
   }
   return { rows: [], columns: [], rowCount: outcome.completion.rows, completion: outcome.completion };
 }
@@ -308,8 +313,8 @@ export class PreparedStatement {
   }
 
   /** @returns the columns of its rows, of a query; of a CALL, its output parameters' */
-  get columns(): readonly Column[] {
-    return this.statement.columns;
+  get columns(): readonly ResultColumn[] {
+    return resultColumns(this.statement.columns);
   }
 
   /** @returns how many parameters it takes */

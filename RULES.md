@@ -65,6 +65,7 @@ Each is told in full in [§7](#7-the-decisions).
 | D20 | Settings are read as turborel-client reads them, from Node.js's own environment, home directory and resolver |
 | D21 | A pool is shared by a program's tasks, its waits promises of their own; a pooled connection is released, or disposed of |
 | D22 | The standard API is a `Client` of one operation at a time, over the low-level client, its examples run |
+| D23 | The sample frames are a fixture copied at a pinned commit |
 
 ---
 
@@ -82,7 +83,7 @@ Each is told in full in [§7](#7-the-decisions).
 | `src/error.ts` | `TurborelError`, the driver's error (D12) |
 | `src/codec/` | the `codec` layer, with no I/O |
 | `src/transport/`, `src/auth/`, `src/tls/`, `src/session/`, `src/statements/`, `src/lobs/`, `src/copy/`, `src/settings/`, `src/pipeline/`, `src/pool/`, `src/api/` | the other layers of D1, each made as its milestone comes |
-| `test/` | the tests, one `*.test.ts` beside the path of what it tests; `test/support/`, the helpers they share; `test/tools/`, the checks tool's; `test/live/`, the live tests, and `test/server/`, their server's set-up (D18) |
+| `test/` | the tests, one `*.test.ts` beside the path of what it tests; `test/support/`, the helpers they share; `test/fixtures/`, files copied from Turborel's (D23); `test/tools/`, the checks tool's; `test/live/`, the live tests, and `test/server/`, their server's set-up (D18) |
 | `doc/` | the manual |
 | `dist/`, `build/`, `coverage/` | made by the build, the tests and coverage; ignored |
 
@@ -742,13 +743,36 @@ transaction nests in another. An `AbortSignal` cancels its statement
 through a `Canceller`, the statement failing with the server's TB920; a
 signal aborted before the statement is sent fails it with the same
 codes, and nothing is sent. A pool's `Client` gives its connection back
-as it closes.
+as it closes. Its columns, of a result, a prepared statement and a
+cursor, are the low-level client's, each with its type's name and its
+type as SQL writes it (`src/api/columns.ts`): as the column was
+declared where the server told it, granted `declared-types`, else as
+its type's tag says, as turborel-client's `Column::type_written`.
 
 Every JavaScript example of the manual is run by `npm run examples`
 (`tools/examples.ts`), each page's against a fresh live server, and
 what it prints compared with the output its last comment lines give;
 CI runs it on Linux against the nightly image. So a page's examples are
 written as a reader runs them, one after another, from an empty schema.
+
+#### D23. The sample frames are a fixture copied at a pinned commit
+
+`[PROTOCOL Sample frames]` keeps a file of sample frames beside the
+page, `doc/client/05-protocol-frames.tsv`. The driver's tests read a
+copy of it, `test/fixtures/05-protocol-frames.tsv`, taken unchanged at
+Turborel's main at 045e42a9, which its first line, a comment, names
+(`test/codec/frames.test.ts`). Every server frame is decoded and told in
+words as its meaning says it (`test/codec/frames-table.ts`), every
+client frame encoded byte for byte, and each compressed frame inflated
+to the frame its meaning names. A compressed frame the driver makes is
+compared by what it inflates to, as zlib's compressors make different
+streams of one frame.
+
+A copy, rather than the file read from a checkout of Turborel's, makes
+the tests the same on every machine and in CI, which has no checkout,
+and none skipped. The copy moves to a later commit with the pinned
+headings (`tools/headings.ts`), in the commit that follows what the file
+then says.
 
 ---
 

@@ -12,7 +12,7 @@ executed with parameters as often as wanted.
 ```ts
 class PreparedStatement {
   readonly statement: Statement;
-  readonly columns: readonly Column[];
+  readonly columns: readonly ResultColumn[];
   readonly parameterCount: number;
   execute(params?: readonly Value[], options?: { signal?: AbortSignal }): Promise<Result>;
   cursor(params?: readonly Value[], options?: { batch?: number; signal?: AbortSignal }): Promise<Cursor>;

@@ -10,7 +10,12 @@ import { test } from 'node:test';
 
 import { Decimal } from '../../src/codec/decimal.js';
 import { Datetime, Interval, PluginValue } from '../../src/codec/values.js';
+import type { Column } from '../../src/codec/composite.js';
+import { columnType, columnTypeName } from '../../src/codec/declared.js';
+import * as cap from '../../src/session/capabilities.js';
+import { ALL_CAPABILITIES } from '../../src/session/capabilities.js';
 import type { Connection } from '../../src/session/connection.js';
+import { Offer } from '../../src/session/told.js';
 import type { Outcome } from '../../src/session/statements.js';
 import { TurborelError } from '../../src/error.js';
 import { isFailure } from '../support/failures.js';
@@ -291,6 +296,95 @@ test('CALL output parameters', async (t) => {
     ['B', 'C'],
   );
   assert.deepEqual(rowsOf(await conn.execute(call, [21n, 1n])), [[2n, 42n]]);
+  await conn.query('ROLLBACK');
+  await conn.terminate();
+});
+
+/** The declared type of each column of DECLARED, its name and as SQL writes it; FLOAT(20) is held as FLOAT(24). */
+const DECLARED = [
+  ['INTEGER', 'INTEGER'],
+  ['SMALLINT', 'SMALLINT'],
+  ['BIGINT', 'BIGINT'],
+  ['DECIMAL', 'DECIMAL(9,2)'],
+  ['NUMERIC', 'NUMERIC(5,0)'],
+  ['REAL', 'REAL'],
+  ['DOUBLE PRECISION', 'DOUBLE PRECISION'],
+  ['FLOAT', 'FLOAT(24)'],
+  ['USER-DEFINED', 'ANN.MONEY'],
+  ['ARRAY', 'INTEGER ARRAY[3]'],
+];
+
+/** Verifies: [PROTOCOL Declared types] [CLIENT Prepared statements] granted `declared-types`, as connecting asks, a Prepared, a Description and a Describe tell each column's declared type, as the page's table writes it; not granted, none, a column's type written as its tag says. */
+test('declared types', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  assert.ok(conn.granted.includes(cap.DECLARED_TYPES));
+  await conn.query('CREATE TYPE MONEY AS DECIMAL(9,2) FINAL');
+  const columns =
+    'I INTEGER, S SMALLINT, B BIGINT, D DECIMAL(9,2), N NUMERIC(5), R REAL, P DOUBLE PRECISION, F FLOAT(20), M MONEY, A INTEGER ARRAY[3]';
+  await conn.query(`CREATE TABLE DECLARED (${columns})`);
+  await conn.query('INSERT INTO DECLARED VALUES (1, 2, 3, 4.5, 6, 7.5, 8.5, 9.5, 10.25, ARRAY[1, 2])');
+  const told = (cs: readonly Column[]): string[][] => cs.map((c) => [columnTypeName(c), columnType(c)]);
+  const prepared = await conn.prepare('SELECT * FROM DECLARED');
+  assert.deepEqual(told(prepared.columns), DECLARED);
+  assert.deepEqual(told((await conn.describe(prepared)).columns), DECLARED, 'described again');
+  const queried = await conn.query('SELECT * FROM DECLARED');
+  assert.ok(queried.kind === 'rows');
+  assert.deepEqual(told(queried.columns), DECLARED);
+  assert.deepEqual(queried.rows[0]?.slice(0, 2), [1n, 2n], 'values by their own tags');
+  await conn.query('COMMIT');
+  const plain = await ann(new Offer(ALL_CAPABILITIES.filter((c) => c !== cap.DECLARED_TYPES && c !== cap.COMPRESSION)));
+  const untold = await plain.query('SELECT I, R, M FROM DECLARED');
+  assert.ok(untold.kind === 'rows');
+  assert.deepEqual(
+    untold.columns.map((c) => [c.declared, columnType(c)]),
+    [
+      [undefined, 'NUMERIC(10,0)'],
+      [undefined, 'FLOAT(24)'],
+      [undefined, 'NUMERIC(9,2)'],
+    ],
+  );
+  assert.deepEqual(untold.rows, [[1n, 7.5, new Decimal(1025n, 2)]], 'the same values');
+  await plain.terminate();
+  await conn.query('DROP TABLE DECLARED RESTRICT');
+  await conn.query('DROP TYPE MONEY RESTRICT');
+  await conn.query('COMMIT');
+  await conn.terminate();
+});
+
+/** Verifies: [CLIENT Large objects] an INSERT of several rows whose `?` marks take large objects stores each whole, a `?` taking its object column's type. */
+test('an INSERT of several rows of large objects', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  await conn.query('CREATE TABLE LOBROWS (ID INTEGER, B BLOB(8M), C CLOB(1M))');
+  const octets = await conn.createLob('binary');
+  await octets.write(new Uint8Array(4 * 1024 * 1024).fill(7));
+  const blob = await octets.finish();
+  const text = await conn.createLob('character');
+  await text.write('x'.repeat(80_000));
+  const clob = await text.finish();
+  const insert = await conn.prepare("INSERT INTO LOBROWS VALUES (1, ?, ?), (2, X'0102', 'short')");
+  await conn.execute(insert, [blob, clob]);
+  const lengths = await conn.query('SELECT ID, OCTET_LENGTH(B), CHAR_LENGTH(C) FROM LOBROWS ORDER BY ID');
+  assert.deepEqual(rowsOf(lengths), [
+    [1n, 4_194_304n, 80_000n],
+    [2n, 2n, 5n],
+  ]);
+  await conn.query('ROLLBACK');
+  await conn.terminate();
+});
+
+/** Verifies: [CLIENT Prepared statements] a `?`'s value cut to its type completes with the warning 01004, and the connection tells it. */
+test('a value cut to its parameter warns 01004', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  await conn.query('CREATE TABLE CUT (V VARCHAR(5))');
+  const insert = await conn.prepare('INSERT INTO CUT VALUES (?)');
+  const done = await conn.execute(insert, ['abcdefgh']);
+  assert.ok(done.kind === 'done');
+  assert.equal(done.completion.sqlstate, '01004');
+  assert.equal(conn.warning, '01004');
+  assert.deepEqual(rowsOf(await conn.query('SELECT V FROM CUT')), [['abcde']]);
   await conn.query('ROLLBACK');
   await conn.terminate();
 });

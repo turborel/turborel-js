@@ -158,7 +158,7 @@ export class LobWriter {
    * UTF-8, and a character may be split between writes.
    *
    * @param data - octets, or text written as UTF-8
-   * @throws {@link TurborelError} as an append fails; 08006 if the connection is lost
+   * @throws {@link TurborelError} as an append fails: 22021 if a CLOB's octets are not UTF-8, checked by the server across the appends, or an append before was refused; 08006 if the connection is lost
    */
   async write(data: Uint8Array | string): Promise<void> {
     const bytes = typeof data === 'string' ? UTF8.encode(data) : data;
@@ -196,7 +196,7 @@ export class LobWriter {
    * The large object written, to send as a parameter by its locator, valid until its transaction ends.
    *
    * @returns its locator and lengths
-   * @throws {@link TurborelError} the server's: 22021 if a CLOB's octets are not UTF-8, 22001 if it is longer than the longest
+   * @throws {@link TurborelError} the server's: 22021 if a CLOB's octets are not UTF-8, checked across the appends, or an append before was refused; 22001 if it is longer than the longest. A CLOB that ends within a character is refused, 22021, where it is used, as the server cannot know an append is the last.
    */
   async finish(): Promise<LobLocator> {
     await this.#flush();

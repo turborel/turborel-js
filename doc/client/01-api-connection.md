@@ -30,9 +30,14 @@ class Client {
   [Symbol.asyncDispose](): Promise<void>;
 }
 
+interface ResultColumn extends Column {
+  readonly typeName: string;
+  readonly typeWritten: string;
+}
+
 interface Result {
   readonly rows: readonly (readonly Value[])[];
-  readonly columns: readonly Column[];
+  readonly columns: readonly ResultColumn[];
   readonly rowCount: bigint | undefined;
   readonly completion: Completion | undefined;
 }
@@ -47,7 +52,13 @@ settings are ([Appendix C](../appendix/c-settings.md)), say, and gives a
 `query` runs a statement; with `params`, its `?` take them in order, by a
 statement prepared for it and destroyed after. Its `Result` gives a
 query's `rows` and `columns`, or another statement's `completion`, and
-`rowCount`, the rows the server counted, where it counts them.
+`rowCount`, the rows the server counted, where it counts them. Each of
+its `columns`, as a prepared statement's and a cursor's, is the
+low-level client's `Column` with its `typeName`, as the Information
+Schema's DATA_TYPE gives it, and `typeWritten`, the type as SQL writes
+it: as the column was declared where the server told it, so INTEGER and
+DECIMAL(9,2), else as its type's tag says, so NUMERIC(10,0)
+([Statements and Cursors](22-statements.md)).
 `prepare` gives a [prepared statement](02-api-statements.md), and
 `cursor` a [cursor](03-api-cursors.md) of a query's rows.
 

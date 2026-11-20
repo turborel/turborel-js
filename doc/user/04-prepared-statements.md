@@ -37,6 +37,14 @@ await conn.terminate();
 Values too few or too many for the parameters fail with SQLSTATE 07001;
 a statement deallocated, with 26000.
 
+A column's `type` is the type its values are written by, and one tag
+stands for several declared types: an INTEGER column's is an exact
+numeric type of precision 10 and scale 0. The server tells each
+column's declared type too, as a connection asks by default, and
+`columnType(column)` gives it, INTEGER, or the type the tag says where
+the server did not tell it. A value cut to its parameter's type, as a
+string longer than its column's, completes with the warning 01004.
+
 A CALL's parameters are its inputs alone. Its columns are one for each
 `?` of an OUT or INOUT parameter, in the procedure's parameter order, so
 an INOUT `?` is both; `execute` gives their values once the procedure

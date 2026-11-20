@@ -9,7 +9,7 @@
  */
 
 import type { Client } from './client.js';
-import type { Column } from '../codec/composite.js';
+import { type ResultColumn, resultColumns } from './columns.js';
 import type { Value } from '../codec/values.js';
 import type { Statement } from '../session/statements.js';
 
@@ -78,8 +78,8 @@ export class Cursor implements AsyncIterable<readonly Value[]> {
   }
 
   /** @returns the columns of its rows */
-  get columns(): readonly Column[] {
-    return this.#statement.columns;
+  get columns(): readonly ResultColumn[] {
+    return resultColumns(this.#statement.columns);
   }
 
   /**

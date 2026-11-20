@@ -131,6 +131,29 @@ test('large objects written', async (t) => {
   await conn.terminate();
 });
 
+/** Verifies: [PROTOCOL Lob 'L'] the request: a CLOB's octets are checked as UTF-8 as each Append comes: one not UTF-8 refused with 22021 by its Append, every later Append and its use refused; one ending within a character refused, 22021, where it is used. */
+test('a CLOB not UTF-8 is refused as it is appended', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  await conn.query('CREATE TABLE CHECKED (C CLOB(1M))');
+  const bad = await conn.createLob('character');
+  await bad.write(Uint8Array.of(0x61, 0xff));
+  await assert.rejects(bad.finish(), isFailure(-301, '22021'), 'its Append');
+  await bad.write('b');
+  await assert.rejects(bad.finish(), isFailure(-301, '22021'), 'every later Append');
+  const after = await conn.createLob('character');
+  await after.write('a');
+  const located = await after.finish();
+  const insert = await conn.prepare('INSERT INTO CHECKED VALUES (?)');
+  await conn.execute(insert, [located]);
+  const half = await conn.createLob('character');
+  await half.write(Uint8Array.of(0x61, 0xc3));
+  const cut = await half.finish();
+  await assert.rejects(conn.execute(insert, [cut]), isFailure(-301, '22021'), 'where it is used');
+  await conn.query('ROLLBACK');
+  await conn.terminate();
+});
+
 /** Verifies: [PROTOCOL Conversations] [CLIENT Copying and exporting] rows copied into the columns named or all, many to a message, the rows inserted counted whatever was granted; ping as it goes. */
 test('a copy', async (t) => {
   if (live(t) === undefined) return;

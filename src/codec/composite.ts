@@ -26,6 +26,19 @@ export interface Column {
   readonly type: DataType;
   /** Whether it is constrained NOT NULL. */
   readonly notNull: boolean;
+  /** The type it was declared with, as INTEGER of an exact numeric type, if the server told it (`declared-types`). */
+  readonly declared?: Declared;
+}
+
+/**
+ * The type a column was declared with, beside the tag its values are
+ * written by, as turborel-protocol's `Declared` holds it.
+ */
+export interface Declared {
+  /** Its name, as the Information Schema's DATA_TYPE gives it: INTEGER, DECIMAL, USER-DEFINED of a distinct type. */
+  readonly name: string;
+  /** The whole type as SQL writes it: INTEGER, DECIMAL(9,2), a distinct type's schema and name. */
+  readonly written: string;
 }
 
 /** A dynamic parameter of a prepared statement, as Prepared gives it. */

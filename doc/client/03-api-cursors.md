@@ -13,7 +13,7 @@ as an async iterator, read by `for await`.
 const DEFAULT_CURSOR_BATCH = 100;
 
 class Cursor implements AsyncIterable<readonly Value[]> {
-  readonly columns: readonly Column[];
+  readonly columns: readonly ResultColumn[];
   next(): Promise<readonly Value[] | undefined>;
   [Symbol.asyncIterator](): AsyncGenerator<readonly Value[]>;
   close(): Promise<void>;

@@ -293,6 +293,7 @@ async function statusesOf(frames: FrameStream, request: Request, ends: Reply['ki
   for (;;) {
     const frame = await frames.next(MAX_BODY, 5000);
     const reply = decodeReply(frame.kind, frame.body);
+    if (reply.kind === 'status' && reply.name === 'CATALOG') assert.notEqual(reply.value, '', 'CATALOG never empty');
     if (reply.kind === 'status') names.push(reply.name);
     else if (reply.kind === ends) return names;
     else if (reply.kind === 'error') throw reply.failure;
@@ -302,7 +303,7 @@ async function statusesOf(frames: FrameStream, request: Request, ends: Reply['ki
 /** The names of the page's table, in its order. */
 const TABLE = ['SERVER_VERSION', 'AUTHORIZATION', 'SCHEMA', 'READ_ONLY', 'SERVER_READ_ONLY', 'CATALOG', 'OWNER'];
 
-/** Verifies: [PROTOCOL Status 'T'] at login and after Reset one of each name of the table, in its order, then the session's settings; after a statement only what it changed. */
+/** Verifies: [PROTOCOL Status 'T'] at login and after Reset one of each name of the table, in its order, then the session's settings; after a statement only what it changed; CATALOG never empty. */
 test('statuses in their order', async (t) => {
   if (live(t) === undefined) return;
   const { socket } = await open(tcp('127.0.0.1', PORT), 5000);

@@ -43,6 +43,8 @@ export const GENERATED_VALUES = 'generated-values';
 export const FETCH_ENDS = 'fetch-ends';
 /** A Complete carries its statement's conditions, tag 17, in place of Notices. */
 export const CONDITIONS = 'conditions';
+/** A Prepared and a Description carry each column's declared type, tag 19. */
+export const DECLARED_TYPES = 'declared-types';
 
 /** Every capability of version 1, in the order Ready grants them. */
 export const ALL_CAPABILITIES: readonly string[] = [
@@ -64,6 +66,7 @@ export const ALL_CAPABILITIES: readonly string[] = [
   GENERATED_VALUES,
   FETCH_ENDS,
   CONDITIONS,
+  DECLARED_TYPES,
 ];
 
 /** The session's authorization identifier, a status the server tells. */

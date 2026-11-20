@@ -14,7 +14,8 @@ import { REPLY } from '../../src/codec/kinds.js';
 import { Writer } from '../../src/codec/writer.js';
 import { type Frame, FrameStream } from '../../src/transport/frames.js';
 import { type Target, local, tcp } from '../../src/transport/target.js';
-import { type Column, writeColumn, writeFailure, writeRow } from '../../src/codec/composite.js';
+import { type Column, writeFailure, writeRow } from '../../src/codec/composite.js';
+import { writeColumns } from '../../src/codec/declared.js';
 import { MORE, writeMark } from '../../src/codec/tail.js';
 import type { Value } from '../../src/codec/values.js';
 import type { TurborelError } from '../../src/error.js';
@@ -96,8 +97,7 @@ export class Peer {
    */
   description(columns: readonly Column[]): void {
     this.reply('D', (w) => {
-      w.u32(columns.length);
-      for (const c of columns) writeColumn(w, c);
+      writeColumns(w, columns);
     });
   }
 

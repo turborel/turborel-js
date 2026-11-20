@@ -49,7 +49,11 @@ back.
 written in appends of at most `CHUNK_OCTETS`, a CLOB's cut where a
 character ends, so a character may be split between writes. `finish`
 gives its locator and lengths, to pass as a parameter, valid until its
-transaction ends and used once.
+transaction ends and used once. The server checks a CLOB's octets as
+UTF-8 as each append comes: one that is not is refused by its append,
+as a `write` or `finish` sends it, and every append after and the
+value's use are refused too. One that ends within a character is
+refused where it is used.
 
 ## ERRORS
 
@@ -57,7 +61,7 @@ transaction ends and used once.
 |---|---|---|
 | 0F001 | -301 | A locator no longer valid |
 | 22000 | -301 | A large object sent whole freed or held, which has no locator |
-| 22021 | -301 | A CLOB whose octets are not UTF-8, as `finish` sends them |
+| 22021 | -301 | A CLOB whose octets are not UTF-8, by the append that sends them and every one after; one that ends within a character, where it is used |
 | 22001 | -301 | A value longer than its column, as it is inserted |
 | 08006 | -919 | A stream given less of the large object than its length; the connection lost |
 

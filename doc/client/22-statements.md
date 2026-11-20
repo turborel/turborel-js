@@ -23,6 +23,14 @@ interface Batch { rows: readonly (readonly Value[])[]; more: boolean }
 interface CursorOptions { rows?: number; cursor?: number }
 interface Ran { outcomes: readonly Outcome[]; failure?: TurborelError }
 
+interface Column {
+  name?: string; type: DataType; notNull: boolean;
+  declared?: { name: string; written: string };
+}
+function columnType(column: Column): string;
+function columnTypeName(column: Column): string;
+function typeWritten(type: DataType): string;
+
 class Statement {
   readonly number: number;
   readonly parameters: readonly Parameter[];
@@ -74,11 +82,24 @@ cursor's transaction ends as the cursor does. A cursor numbered other
 than 0 needs `cursors`; `describe` and `describeCursor` need `describe`.
 `deallocate` lets a statement go.
 
+A `Column`, of a statement's `columns` or of a query's outcome, has its
+name, its `type` and whether it is NOT NULL. A type's tag can stand for
+several declared types, so an INTEGER column's `type` is an exact
+numeric type of precision 10 and scale 0. Granted `declared-types`,
+which a connection asks for by default, its `declared` holds the type
+it was declared with: its `name` as the Information Schema's DATA_TYPE
+gives it, and the type as SQL `written`. `columnType` gives the declared
+type where the server told it, else the type its tag says, as
+`typeWritten` writes it, so INTEGER is `NUMERIC(10,0)`; `columnTypeName`
+gives its name the same way.
+
 Each statement's completion leaves `rowsAffected`, `lastGenerated`,
 `serverTime`, `commitPosition`, `warning` and `conditions`, as far as
 the server granted `row-counts`, `generated-values`, `commit-position`
 and `conditions`. `setQueryAttributes` sets attributes each later Query
-and Execute carries, once the server granted `query-attributes`.
+and Execute carries, once the server granted `query-attributes`. A
+parameter's value cut to its type, as a string longer than its
+column's, completes with the warning 01004, which `warning` gives.
 
 ## ERRORS
 
@@ -113,6 +134,21 @@ await conn.query('COMMIT');
 await conn.terminate();
 // { rows: [ [ 1n, 'Ada' ] ], more: true }
 // { rows: [ [ 2n, 'Grace' ] ], more: false }
+```
+
+A column's declared type, beside the type its tag says:
+
+```js
+import { Trust, columnType, connectTo, tcp, typeWritten } from 'turborel';
+
+const conn = await connectTo(tcp('127.0.0.1', 7422), 'ann', new Trust());
+await conn.query('CREATE TABLE PRICES (ID INTEGER, PRICE DECIMAL(9,2))');
+const typed = await conn.prepare('SELECT ID, PRICE FROM PRICES');
+for (const c of typed.columns) console.log(columnType(c), typeWritten(c.type), c.declared?.name);
+await conn.query('ROLLBACK');
+await conn.terminate();
+// INTEGER NUMERIC(10,0) INTEGER
+// DECIMAL(9,2) NUMERIC(9,2) DECIMAL
 ```
 
 ## SEE ALSO

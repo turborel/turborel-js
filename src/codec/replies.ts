@@ -7,15 +7,8 @@
  * @packageDocumentation
  */
 
-import {
-  type Column,
-  type Parameter,
-  readColumn,
-  readDiagnostics,
-  readFailure,
-  readParameter,
-  readRow,
-} from './composite.js';
+import { type Column, type Parameter, readDiagnostics, readFailure, readParameter, readRow } from './composite.js';
+import { readColumns } from './declared.js';
 import { LOB_REPLY, REPLY } from './kinds.js';
 import { Reader } from './reader.js';
 import { CONDITIONS, GENERATED, MORE, POSITION, ROWS, TIME, Tail } from './tail.js';
@@ -177,9 +170,9 @@ const READERS: Readonly<Partial<Record<number, (r: Reader) => Reply>>> = {
     kind: 'prepared',
     statement: r.u32(),
     parameters: r.list(readParameter),
-    columns: r.list(readColumn),
+    columns: readColumns(r),
   }),
-  [REPLY.DESCRIPTION]: (r) => ({ kind: 'description', columns: r.list(readColumn) }),
+  [REPLY.DESCRIPTION]: (r) => ({ kind: 'description', columns: readColumns(r) }),
   [REPLY.ROWS]: (r) => ({ kind: 'rows', rows: r.list(readRow) }),
   [REPLY.SUSPENDED]: () => ({ kind: 'suspended' }),
   [REPLY.COMPLETE]: (r) => ({ kind: 'complete', completion: readCompletion(r) }),

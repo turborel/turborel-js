@@ -12,7 +12,7 @@ import { Trust } from '../../src/auth/mechanism.js';
 import type { Column } from '../../src/codec/composite.js';
 import { REQUEST } from '../../src/codec/kinds.js';
 import { Reader } from '../../src/codec/reader.js';
-import { writeColumn } from '../../src/codec/composite.js';
+import { writeColumns } from '../../src/codec/declared.js';
 import { readValues } from '../../src/codec/value-codec.js';
 import { writeType } from '../../src/codec/types.js';
 import { connectTo } from '../../src/session/connect.js';
@@ -27,6 +27,8 @@ after(async () => {
 
 /** The one column every query of the server gives. */
 const ID: Column = { name: 'ID', type: { kind: 'varying', length: 10, units: 'characters' }, notNull: false };
+/** The one column every prepared query of the server gives, of a distinct type it declares. */
+const CODE: Column = { ...ID, name: 'CODE', declared: { name: 'USER-DEFINED', written: 'S.CODE' } };
 /** The rows a cursor of the server reads. */
 const ROWS = ['a', 'b', 'c', 'd', 'e'];
 
@@ -57,8 +59,7 @@ async function answer(peer: Peer): Promise<void> {
       peer.reply('P', (w) => {
         w.u32(number).u32(1);
         writeType(w.flag(false), ID.type);
-        w.u32(query ? 1 : 0);
-        if (query) writeColumn(w, ID);
+        writeColumns(w, query ? [CODE] : []);
       });
     } else if (frame.kind === REQUEST.EXECUTE) {
       const number = r.u32();
@@ -111,6 +112,21 @@ test('queries and prepared statements', async () => {
   await s.close();
   await c.close();
   await s[Symbol.asyncDispose]();
+});
+
+/** Verifies: [CLIENT Prepared statements] the standard API's columns give each column's type's name and its type as SQL writes it: as declared where the server told it, else as its tag says. */
+test('columns tell their types', async () => {
+  const c = await client();
+  const [id] = (await c.query('VALUES 1')).columns;
+  assert.deepEqual([id?.name, id?.typeName, id?.typeWritten], ['ID', 'CHARACTER VARYING', 'CHARACTER VARYING(10)']);
+  const s = await c.prepare('SELECT CODE FROM T');
+  const [code] = s.columns;
+  assert.deepEqual([code?.typeName, code?.typeWritten, code?.type.kind], ['USER-DEFINED', 'S.CODE', 'varying']);
+  assert.equal(s.columns, s.columns, 'made once');
+  const cursor = await s.cursor([], { batch: 2 });
+  assert.equal(cursor.columns[0]?.typeWritten, 'S.CODE');
+  await cursor.close();
+  await c.close();
 });
 
 /** Verifies: [DESIGN] D2 a cursor read a batch at a time by for await, by next, its own statement or a prepared one's. */

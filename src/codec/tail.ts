@@ -33,6 +33,8 @@ export const GENERATED = 16;
 export const CONDITIONS = 17;
 /** Tag 18: time, of Complete. */
 export const TIME = 18;
+/** Tag 19: declared, the columns' declared types, of Prepared and Description. */
+export const DECLARED = 19;
 
 /** The most attributes a message takes. */
 export const MAX_ATTRIBUTES = 32;
