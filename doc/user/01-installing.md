@@ -35,8 +35,9 @@ import { TurborelError } from 'turborel';
 const { TurborelError } = require('turborel');
 ```
 
-Today the package exports its error type, `TurborelError`, and the
-values and data types its codec reads and writes, among them `Decimal`,
-`DecFloat`, `Datetime`, `Json` and `Uuid`
-([Values](../client/23-values.md)); it does not connect to a server
-yet.
+Today the package exports its low-level client: `connectTo` and the
+connections it makes ([Connecting](02-connecting.md)), the statements
+they run ([Running Queries](03-queries.md)), its error type,
+`TurborelError`, and the values and data types its codec reads and
+writes, among them `Decimal`, `DecFloat`, `Datetime`, `Json` and `Uuid`
+([Values](../client/23-values.md)).

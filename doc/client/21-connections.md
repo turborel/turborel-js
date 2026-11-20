@@ -38,6 +38,8 @@ class Connection {
   setting(name: string): string | undefined; settings(): ReadonlyMap<string, string>;
   setNoticeHandler(handler?: (notice: Notice) => void): void; takeNotices(): Notice[];
   readTimeout: number | undefined; setReadTimeout(ms?: number): void; setMaxBody(bytes: number): void;
+  ping(): Promise<void>; reset(): Promise<void>;
+  changeUser(user: string, mechanism: Mechanism): Promise<void>;
   terminate(): Promise<void>; destroy(): void;
 }
 
@@ -69,6 +71,17 @@ request of a capability not granted fails before it is sent. A failure
 of the connection loses it: it takes no more, and its socket is
 closed.
 
+`ping` asks whether the server answers, once it granted `ping`.
+`reset` puts the session back as it was at login, once it granted
+`reset`: its transaction rolled back, told by notice 01T01, its prepared
+statements, cursors, temporary tables and settings gone, its user and
+cancel key kept. `changeUser` authenticates the connection again as
+another user, once it granted `change-user`, and renews the session as
+`reset` does, under a new cancel key, the capabilities those granted;
+no transaction is active after it, and a refusal closes the connection.
+The statements a connection runs are on
+[Statements and Cursors](22-statements.md).
+
 `terminate` ends the session, its transaction as SESSION.COMMIT_AT_END
 says, waiting for the server to close at most the read timeout, else
 60 seconds. `destroy` closes the connection at once. `Canceller.cancel`
@@ -81,7 +94,7 @@ display form.
 
 | SQLSTATE | SQLCODE | When |
 |---|---|---|
-| 28000 | -919 | A password or SCRAM over plain TCP, refused before connecting; credentials the server refused; a SCRAM exchange whose server did not prove itself, or not bound under `require` |
+| 28000 | -919 | A password or SCRAM over plain TCP, refused before connecting; credentials the server refused, as the connection is made or its user changed; a SCRAM exchange whose server did not prove itself, or not bound under `require` |
 | 08004 | -919 | The server refused the connection, as of a protocol version it does not speak |
 | 08006 | -919 | No connection made, in time; a TLS handshake that failed, as of a server no authority trusted vouches for; a wait that ran out; a reply longer than taken; a request of a capability not granted |
 | TB920 | -920 | The statement was cancelled |

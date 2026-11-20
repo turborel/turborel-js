@@ -68,8 +68,10 @@ turborel-client gives the same failure.
 | 0A000 | -900 | A value past turborel's limits, as a JSON value nested past 128 levels |
 | TB910 | -910 | An argument of a type or range the driver does not take |
 
-The server's failures, and the rest of the driver's, are added as the
-milestones that raise them land.
+A connection failure, any failure of class 08 but 08003, and
+credentials refused as a connection is made or its user changed, lose
+the connection. The server's failures, and those of each request, are
+in [Appendix B](../appendix/b-errors.md) and on each page.
 
 ## EXAMPLES
 
