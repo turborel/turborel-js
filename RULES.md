@@ -447,6 +447,15 @@ rule here, the rule is kept:
   SQLCODE -910 and SQLSTATE TB910 where turborel-client has no such
   failure, as turborel's API misused (D12).
 
+Where turborel-client's code contradicts what The Native Protocol or
+The Client Library says outright, the driver follows the documents, and
+each such place is listed here, so the reference can be fixed:
+
+- After ChangeUser, no transaction is active: the session is renewed as
+  by Reset (`[PROTOCOL ChangeUser 'U']`), so `inTransaction` is false
+  once the server's Ready comes. turborel-client's `change_user` keeps
+  the flag its last statement left (`client/src/session.rs` at 1c4187e4).
+
 ### This driver's own
 
 #### D9. One ES module, with an exports map, which CommonJS loads by `require`

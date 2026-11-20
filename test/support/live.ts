@@ -4,7 +4,7 @@
  * replies, until the statements' layer gives one.
  */
 
-import { after, before } from 'node:test';
+import { type TestContext, after, before } from 'node:test';
 
 import type { Completion } from '../../src/codec/replies.js';
 import type { Value } from '../../src/codec/values.js';
@@ -12,6 +12,7 @@ import type { Connection } from '../../src/session/connection.js';
 import { type Live, PORT, startLive } from '../server/server.js';
 import { Trust } from '../../src/auth/mechanism.js';
 import { connectTo } from '../../src/session/connect.js';
+import { Offer } from '../../src/session/told.js';
 import { tcp } from '../../src/transport/target.js';
 
 /** The server of a test file, once started; undefined where none is named. */
@@ -29,6 +30,27 @@ export function liveServer(): void {
   after(async () => {
     await server.live?.stop();
   });
+}
+
+/**
+ * The live server, or the test skipped where none is named.
+ *
+ * @param t - the test
+ * @returns the server, or undefined if skipped
+ */
+export function live(t: TestContext): Live | undefined {
+  if (server.live === undefined) t.skip('set TURBOREL_TEST_SERVER to run the live tests');
+  return server.live;
+}
+
+/**
+ * A connection to the live server over TCP as ANN, by trust.
+ *
+ * @param offer - what it asks for; every capability but compression by default
+ * @returns the connection
+ */
+export function ann(offer: Offer = Offer.default()): Promise<Connection> {
+  return connectTo(tcp('127.0.0.1', PORT), 'ann', new Trust(), { offer });
 }
 
 /** What a statement gave: its rows, if a query, and its completion. */

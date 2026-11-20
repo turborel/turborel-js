@@ -12,8 +12,9 @@
  * is made for. Its Promise-based API of connections, queries, prepared
  * statements, cursors as async iterators and pools (RULES.md D2) is built
  * milestone by milestone, over the low-level client it exports: so far
- * its connections, by every transport and mechanism, its error type, and
- * the values and data types its codec reads and writes.
+ * its connections, by every transport and mechanism, the statements they
+ * run, prepared or not, its error type, and the values and data types its
+ * codec reads and writes.
  *
  * @packageDocumentation
  */
@@ -59,6 +60,8 @@ export * as capabilities from './session/capabilities.js';
 export { connectTo } from './session/connect.js';
 export { CONNECT_WITHIN, Connection, DEFAULT_TIMEOUTS, TERMINATE_WITHIN, VERSION } from './session/connection.js';
 export type { OpenOptions, Timeouts } from './session/connection.js';
+export { Statement } from './session/statements.js';
+export type { Batch, CursorOptions, Outcome, Ran, Sink, Streamed } from './session/statements.js';
 export { APPLICATION, KEPT_NOTICES, Offer } from './session/told.js';
 export type { Notice, NoticeHandler } from './session/told.js';
 export { channelOf } from './tls/channel.js';

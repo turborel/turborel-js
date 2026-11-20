@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { connect as connectTls } from 'node:tls';
-import { type TestContext, test } from 'node:test';
+import { test } from 'node:test';
 
 import { Certificate, Password, Trust } from '../../src/auth/mechanism.js';
 import { KeyCache } from '../../src/auth/key-cache.js';
@@ -25,20 +25,9 @@ import { type Target, local, open, overTls, tcp } from '../../src/transport/targ
 import type { Live } from '../server/server.js';
 import { PORT, USERS } from '../server/server.js';
 import { isConnectionFailure, isFailure } from '../support/failures.js';
-import { liveServer, run, server } from '../support/live.js';
+import { live, liveServer, run } from '../support/live.js';
 
 liveServer();
-
-/**
- * The live server, or the test skipped where none is named.
- *
- * @param t - the test
- * @returns the server, or undefined if skipped
- */
-function live(t: TestContext): Live | undefined {
-  if (server.live === undefined) t.skip(`set TURBOREL_TEST_SERVER to run the live tests`);
-  return server.live;
-}
 
 const TCP = tcp('127.0.0.1', PORT);
 const refused = isFailure(-919, '28000');

@@ -2,15 +2,18 @@
  * What a connection asks for as it opens, and what the server has told it
  * since beside each statement's replies, as turborel-client's `told.rs`
  * keeps them: the capabilities granted, the session's settings as Status
- * gave them, and the notices the server sent.
+ * gave them, the notices the server sent, the log position of the last
+ * commit and the last statement's completion; and the query attributes
+ * each request carries.
  * `[CLIENT What a connection asks for]`
  * `[CLIENT What the server tells]`
  *
  * @packageDocumentation
  */
 
-import { ALL_CAPABILITIES, COMPRESSION } from './capabilities.js';
+import { ALL_CAPABILITIES, COMPRESSION, QUERY_ATTRIBUTES } from './capabilities.js';
 import { DEFAULT_THRESHOLD } from '../codec/compress.js';
+import type { Completion } from '../codec/replies.js';
 import type { Attribute } from '../codec/tail.js';
 import type { Diagnostics } from '../error.js';
 
@@ -109,6 +112,12 @@ export class Told {
   handler: NoticeHandler | undefined;
   /** The notices that came while no handler was set, the last 64. */
   readonly notices: Notice[] = [];
+  /** The log position of the last commit the server told of. */
+  position: bigint | undefined;
+  /** The last statement's completion. */
+  completed: Completion | undefined;
+  /** The query attributes each Query and Execute carries, as the program set them. */
+  attributes: readonly Attribute[] = [];
 
   /**
    * Takes a notice: to the handler, or kept.
@@ -132,5 +141,10 @@ export class Told {
    */
   has(name: string): boolean {
     return this.granted.includes(name);
+  }
+
+  /** @returns the attributes a Query or an Execute carries: none unless `query-attributes` was granted */
+  carried(): readonly Attribute[] {
+    return this.has(QUERY_ATTRIBUTES) ? this.attributes : [];
   }
 }

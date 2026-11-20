@@ -1,137 +1,49 @@
 /**
- * A connection to a server (`[PROTOCOL Opening a connection]`,
- * `[CLIENT Connecting]`), as turborel-client's `connection.rs`, `frames.rs`
- * and `told.rs` keep one: Hello sent, each Challenge answered until Ready,
- * the capabilities granted and the session's settings kept, then requests
- * sent and replies read one at a time, each Notice and Status before a
- * reply taken on the way. A connection failure loses it: it takes no more.
+ * A connection to a server, and the statements it runs
+ * (`[CLIENT Running statements]`, `[CLIENT Prepared statements]`,
+ * `[CLIENT What the server tells]`, `[CLIENT Controlling the session]`), as
+ * turborel-client's `connection.rs`, `statements.rs` and `session.rs` run
+ * them: one statement at a time, a query's rows read whole, or given to a
+ * sink a batch at a time; prepared statements and their cursors; and what
+ * the server told of the last statement. Its link (`link.ts`) logs it in
+ * and carries its frames.
  *
  * @packageDocumentation
  */
 
 import * as cap from './capabilities.js';
-import { type Notice, type NoticeHandler, Offer, Told } from './told.js';
-import { compressFrames, received } from '../codec/compress.js';
-import { HEADER_BYTES, MAX_BODY, decodeHeader } from '../codec/frame.js';
-import { type Reply, decodeReply } from '../codec/replies.js';
-import { type Request, encodeRequest } from '../codec/requests.js';
+import { Link, type OpenOptions } from './link.js';
+import {
+  type Batch,
+  type CursorOptions,
+  type Outcome,
+  type Ran,
+  type Sink,
+  Statement,
+  type Streamed,
+} from './statements.js';
+import { Offer } from './told.js';
+import type { Column } from '../codec/composite.js';
+import type { Completion, Reply, Timing } from '../codec/replies.js';
+import type { Attribute } from '../codec/tail.js';
+import type { Value } from '../codec/values.js';
 import { type TurborelError, connectionFailure } from '../error.js';
 import type { Mechanism } from '../auth/mechanism.js';
 import type { FrameStream } from '../transport/frames.js';
-import type { Target } from '../transport/target.js';
 
-/** The protocol's version, Hello's first field. */
-export const VERSION = 1;
+export { CONNECT_WITHIN, DEFAULT_TIMEOUTS, TERMINATE_WITHIN, VERSION, capabilitiesOf, endsConnection } from './link.js';
+export type { OpenOptions, Timeouts } from './link.js';
 
-/** How long a connection waits to connect, begin TLS and for each step of its login, unless told: 30 seconds. */
-export const CONNECT_WITHIN = 30_000;
+/** The largest statement number, after which they wrap to 0. */
+const LAST_NUMBER = 0xffff_ffff;
 
-/** How long Terminate waits for the server to close, if the read timeout sets no limit: 60 seconds. */
-export const TERMINATE_WITHIN = 60_000;
+/** Rows as a reply gives them. */
+type Rows = (readonly Value[])[];
 
-/** The SQLSTATE class of a connection exception, which loses the connection. */
-const CONNECTION_CLASS = '08';
-/** SQLSTATE 08003, connection does not exist, which names another connection and loses none. */
-const ANOTHER_CONNECTION = '08003';
-/** The SQLSTATE class of invalid authorization, which loses a connection being made. */
-const AUTHORIZATION_CLASS = '28';
-/** SQLCODE of a connection exception. */
-const SQLCODE_CONNECTION = -919;
-
-/** How long a connection waits on its server, in milliseconds; undefined for no limit. */
-export interface Timeouts {
-  /** To connect, begin TLS and for each step of the login: 30 seconds by default. */
-  readonly connect: number | undefined;
-  /** For each read or write after: no limit by default, as a statement may run as long as it must. */
-  readonly read: number | undefined;
-}
-
-/** The timeouts a connection waits by unless told. */
-export const DEFAULT_TIMEOUTS: Timeouts = { connect: CONNECT_WITHIN, read: undefined };
-
-/** How a connection is opened beyond its stream, user and mechanism. */
-export interface OpenOptions {
-  /** What it asks for; every capability but compression by default. */
-  readonly offer?: Offer;
-  /** How long it waits; 30 seconds each step to log in, then no limit, by default. */
-  readonly timeouts?: Timeouts;
-  /** Where its server is, so it can be reached again to cancel. */
-  readonly target?: Target;
-  /** Whether its reads and writes after the login are bounded by its read timeout; a named pipe's are not. */
-  readonly boundedReads?: boolean;
-}
-
-/** The capability each request with one needs, by its kind. */
-const NEEDED: Readonly<Partial<Record<Request['kind'], string>>> = {
-  describe: cap.DESCRIBE,
-  ping: cap.PING,
-  reset: cap.RESET,
-  changeUser: cap.CHANGE_USER,
-  copyIn: cap.COPY,
-  copyData: cap.COPY,
-  copyEnd: cap.COPY,
-};
-
-/**
- * The capabilities `request` needs granted, its tail fields' among them.
- *
- * @param request - the request
- * @returns their names
- */
-export function capabilitiesOf(request: Request): string[] {
-  const needed: string[] = [];
-  const own = NEEDED[request.kind];
-  if (own !== undefined) needed.push(own);
-  if ((request.kind === 'query' || request.kind === 'execute') && request.attributes.length > 0)
-    needed.push(cap.QUERY_ATTRIBUTES);
-  if (request.kind === 'query' && request.multi) needed.push(cap.MULTI_STATEMENT);
-  if ((request.kind === 'execute' || request.kind === 'fetch' || request.kind === 'close') && request.cursor !== 0) {
-    needed.push(cap.CURSORS);
-  }
-  return needed;
-}
-
-/**
- * Whether `failure` loses the connection it came on: a connection
- * exception but 08003, or credentials refused as the connection is made.
- *
- * @param failure - the failure
- * @returns true if the server closes the connection after it
- */
-export function endsConnection(failure: TurborelError): boolean {
-  const another = failure.sqlstate === ANOTHER_CONNECTION;
-  const connecting = failure.sqlcode === SQLCODE_CONNECTION && failure.sqlstate.startsWith(AUTHORIZATION_CLASS);
-  return (failure.sqlstate.startsWith(CONNECTION_CLASS) && !another) || connecting;
-}
-
-/** A session of a server's, over one connection. */
-export class Connection {
-  readonly #stream: FrameStream;
-  readonly #told = new Told();
-  readonly #target: Target | undefined;
-  readonly #boundedReads: boolean;
-  #timeouts: Timeouts;
-  #maxBody = MAX_BODY;
-  #authorization = '';
-  #server = '';
-  #key: Uint8Array | undefined;
-  #compressFrom: number | undefined;
-  #lost: TurborelError | undefined;
-  #active = false;
-  #loggingIn = true;
-
-  /**
-   * A connection over `stream`, not yet logged in.
-   *
-   * @param stream - its frames
-   * @param options - its timeouts, target and whether its reads are bounded
-   */
-  private constructor(stream: FrameStream, options: OpenOptions) {
-    this.#stream = stream;
-    this.#timeouts = options.timeouts ?? DEFAULT_TIMEOUTS;
-    this.#target = options.target;
-    this.#boundedReads = options.boundedReads ?? true;
-  }
+/** A connection to a server: its session, and the statements it runs there. */
+export class Connection extends Link {
+  #nextStatement = 0;
+  #autocommit = false;
 
   /**
    * Opens a connection over `stream` as `user`, proved by `mechanism`.
@@ -150,333 +62,370 @@ export class Connection {
     options: OpenOptions = {},
   ): Promise<Connection> {
     const connection = new Connection(stream, options);
-    const offer = options.offer ?? Offer.default();
-    try {
-      await connection.#send({
-        kind: 'hello',
-        version: VERSION,
-        user,
-        mechanism: mechanism.name,
-        initial: mechanism.initial(),
-        capabilities: offer.capabilities,
-        attributes: offer.attributes,
-      });
-      await connection.#login(mechanism, offer);
-      return connection;
-    } catch (e) {
-      stream.destroy();
-      throw e;
+    await connection.begin(user, mechanism, options.offer ?? Offer.default());
+    return connection;
+  }
+
+  /** @returns whether each statement is its own transaction, committed as it succeeds and rolled back as it fails */
+  get autocommit(): boolean {
+    return this.#autocommit;
+  }
+
+  /**
+   * Whether each statement `query`, `queryInto` and `execute` run is its
+   * own transaction from now on: off as a connection opens, a transaction
+   * begun by the first statement lasting until COMMIT or ROLLBACK. A
+   * cursor is read within its transaction, which ends as the cursor does
+   * if the server granted `fetch-ends`.
+   *
+   * @param on - whether it is
+   */
+  setAutocommit(on: boolean): void {
+    this.#autocommit = on;
+  }
+
+  /**
+   * Runs `sql`, a direct SQL statement, in the session.
+   *
+   * @param sql - the statement
+   * @returns a query's columns and rows, or another statement's completion
+   * @throws {@link TurborelError} the statement's failure, as the server reports it; 08006 if the connection is lost
+   */
+  async query(sql: string): Promise<Outcome> {
+    await this.send({ kind: 'query', sql, ends: this.#autocommit, attributes: this.told.carried(), multi: false });
+    const first = await this.receive();
+    if (first.kind === 'complete') return { kind: 'done', completion: first.completion };
+    const columns = this.#columns(first);
+    const { rows } = await this.#rows();
+    return { kind: 'rows', columns, rows };
+  }
+
+  /**
+   * Runs `sql` as `query` does, a query's columns and rows given to `sink`
+   * as they come, each batch awaited, so no more than a batch is held.
+   *
+   * @param sql - the statement
+   * @param sink - what takes the columns and rows
+   * @returns how many rows went to the sink, or another statement's completion
+   * @throws {@link TurborelError} as `query`; a query's failure after some rows went to the sink
+   */
+  async queryInto(sql: string, sink: Sink): Promise<Streamed> {
+    await this.send({ kind: 'query', sql, ends: this.#autocommit, attributes: this.told.carried(), multi: false });
+    const first = await this.receive();
+    if (first.kind === 'complete') return { kind: 'done', completion: first.completion };
+    await sink.columns(this.#columns(first));
+    let count = 0;
+    for (;;) {
+      const reply = await this.receive();
+      if (reply.kind === 'rows') {
+        count += reply.rows.length;
+        await sink.rows(reply.rows);
+      } else if (reply.kind === 'complete') return { kind: 'rows', count };
+      else throw this.#unexpected(reply, 'the server broke off its rows');
     }
   }
 
   /**
-   * Answers each Challenge until Ready, or the server's refusal.
+   * Runs `sql`, several statements, in one request: the server runs each
+   * in order, each its own transaction under autocommit, the first that
+   * fails stopping the rest.
    *
-   * @param mechanism - what proves the user
-   * @param offer - what was asked for
+   * @param sql - the statements
+   * @returns each outcome, and the failure that stopped the rest, if one did
+   * @throws {@link TurborelError} 08006 if `multi-statement` was not granted, or the connection is lost
    */
-  async #login(mechanism: Mechanism, offer: Offer): Promise<void> {
+  async queryMany(sql: string): Promise<Ran> {
+    await this.send({ kind: 'query', sql, ends: this.#autocommit, attributes: this.told.carried(), multi: true });
+    const outcomes: Outcome[] = [];
     for (;;) {
-      const reply = await this.receive();
-      if (reply.kind === 'challenge') {
-        await this.#send({ kind: 'answer', answer: await mechanism.answer(reply.challenge) });
-      } else if (reply.kind === 'ready') {
-        mechanism.ready();
-        this.#ready(reply.authorization, reply.key, reply.capabilities, reply.server);
-        this.#compressFrom = this.#told.has(cap.COMPRESSION) ? offer.compressFrom : undefined;
-        return;
-      } else if (reply.kind === 'error') {
-        mechanism.refused();
-        throw this.#failed(reply.failure);
-      } else {
-        throw this.#lose('the server sent no Ready');
+      try {
+        const [outcome, more] = await this.#outcome();
+        outcomes.push(outcome);
+        if (!more) return { outcomes };
+      } catch (e) {
+        if (this.isLost) throw e;
+        return { outcomes, failure: e as TurborelError };
       }
     }
   }
 
-  /**
-   * Takes Ready's fields: the session's authorization, its cancel key, the capabilities granted and the server.
-   *
-   * @param authorization - the authorization identifier
-   * @param key - the cancel key
-   * @param granted - the capabilities granted
-   * @param server - the server's product
-   */
-  #ready(authorization: string, key: Uint8Array, granted: readonly string[], server: string): void {
-    [this.#authorization, this.#key, this.#server, this.#loggingIn] = [authorization, key, server, false];
-    this.#told.granted = cap.ALL_CAPABILITIES.filter((name) => granted.includes(name));
-  }
-
-  /** @returns the milliseconds the next wait may take: the connect timeout while logging in, then the read timeout */
-  #wait(): number | undefined {
-    if (this.#loggingIn) return this.#timeouts.connect;
-    return this.#boundedReads ? this.#timeouts.read : undefined;
-  }
-
-  /**
-   * Sends a request, compressed past the threshold once compression is
-   * granted; refused before anything is sent if it needs a capability not
-   * granted.
-   *
-   * @param request - the request
-   */
-  async #send(request: Request): Promise<void> {
-    if (this.#lost !== undefined) throw this.#lost;
-    const missing = this.#loggingIn ? [] : capabilitiesOf(request).filter((name) => !this.#told.has(name));
-    if (missing.length > 0) throw connectionFailure(`the server did not grant ${missing.join(', ')}`);
-    const frame = encodeRequest(request);
-    const bytes = this.#compressFrom === undefined ? frame : compressFrames(frame, this.#compressFrom);
-    try {
-      await this.#stream.write(bytes, this.#wait());
-    } catch (e) {
-      throw this.#lostBy(e as TurborelError);
-    }
-  }
-
-  /**
-   * Sends a request (a later layer's entry, as statements').
-   *
-   * @param request - the request
-   * @throws {@link TurborelError} 08006 if the connection is lost, or the request needs a capability not granted
-   */
-  async send(request: Request): Promise<void> {
-    await this.#send(request);
-  }
-
-  /**
-   * The server's next reply, each Notice and Status before it taken, a
-   * compressed one inflated, a failure that ends the connection losing it.
-   *
-   * @returns the reply
-   * @throws {@link TurborelError} 08006 if the connection is lost or a reply is malformed
-   */
-  async receive(): Promise<Reply> {
+  /** @returns one statement's outcome of several, and whether another's replies follow */
+  async #outcome(): Promise<[Outcome, boolean]> {
+    const first = await this.receive();
+    if (first.kind === 'complete') return [{ kind: 'done', completion: first.completion }, first.completion.more];
+    const columns = this.#columns(first);
+    const rows: Rows = [];
     for (;;) {
-      const reply = await this.#next();
-      if (reply.kind === 'notice') this.#told.notice(noticeOf(reply));
-      else if (reply.kind === 'status') this.#told.settings.set(reply.name, reply.value);
-      else return this.#noted(reply);
-    }
-  }
-
-  /** @returns the next reply decoded, inflated first if compressed and compression was granted */
-  async #next(): Promise<Reply> {
-    if (this.#lost !== undefined) throw this.#lost;
-    try {
-      const frame = await this.#stream.next(this.#maxBody, this.#wait());
-      const held = received(frame, this.#compressFrom !== undefined, this.#maxBody);
-      return decodeReply(held.kind, held.body);
-    } catch (e) {
-      throw this.#lostBy(e as TurborelError);
+      const reply = await this.receive();
+      if (reply.kind === 'rows') append(rows, reply.rows);
+      else if (reply.kind === 'complete') return [{ kind: 'rows', columns, rows }, reply.completion.more];
+      else throw this.#unexpected(reply, 'the server broke off its rows');
     }
   }
 
   /**
-   * `reply`, its end noted: whether a transaction is active after it, and a failure that ends the connection.
+   * Prepares `sql`, a preparable statement whose dynamic parameters are written `?`.
+   *
+   * @param sql - the statement
+   * @returns the statement, its parameters' types and a query's columns
+   * @throws {@link TurborelError} the server's: 37000 if it is not preparable, or a `?` takes no type where it stands; 08006 if the connection is lost
+   */
+  async prepare(sql: string): Promise<Statement> {
+    const statement = this.#nextStatement;
+    this.#nextStatement = statement === LAST_NUMBER ? 0 : statement + 1;
+    await this.send({ kind: 'prepare', statement, sql });
+    return this.#prepared();
+  }
+
+  /** @returns the statement the server's Prepared describes */
+  async #prepared(): Promise<Statement> {
+    const reply = await this.receive();
+    if (reply.kind === 'prepared') return new Statement(reply.statement, reply.parameters, reply.columns);
+    throw this.#unexpected(reply, 'the server sent no Prepared');
+  }
+
+  /**
+   * Executes `statement` with `values`, its transaction ended with it under autocommit.
+   *
+   * @param statement - a statement this connection prepared
+   * @param values - a value for each parameter
+   * @returns a query's rows, all of them, or another statement's completion
+   * @throws {@link TurborelError} the server's: 07001 if the values are not one for each parameter; the statement's; 08006 if the connection is lost
+   */
+  async execute(statement: Statement, values: readonly Value[] = []): Promise<Outcome> {
+    await this.#execute(statement, values, { ends: this.#autocommit });
+    if (statement.columns.length === 0) return { kind: 'done', completion: await this.#completion() };
+    const { rows } = await this.#rows();
+    return { kind: 'rows', columns: statement.columns, rows };
+  }
+
+  /**
+   * Opens a cursor of `statement`, a query, with `values`, and takes its
+   * first rows. Under autocommit, the server granting `fetch-ends`, its
+   * transaction ends as the cursor does: committed once its last row is
+   * read or it is closed, rolled back if a fetch fails.
+   *
+   * @param statement - a query this connection prepared
+   * @param values - a value for each parameter
+   * @param options - how many rows to take, all by default, and the cursor's number, 0 by default
+   * @returns the rows, and whether the cursor has more
+   * @throws {@link TurborelError} the server's: 24000 if the cursor is open; as `execute`; 08006 for a cursor not 0 if `cursors` was not granted
+   */
+  async openCursor(statement: Statement, values: readonly Value[] = [], options: CursorOptions = {}): Promise<Batch> {
+    const ends = this.#autocommit && this.has(cap.FETCH_ENDS);
+    await this.#execute(statement, values, { ends, ...options });
+    return this.#rows();
+  }
+
+  /**
+   * Sends an Execute.
+   *
+   * @param statement - the statement
+   * @param values - its values
+   * @param options - whether it ends its transaction, its rows and cursor
+   */
+  async #execute(
+    statement: Statement,
+    values: readonly Value[],
+    options: CursorOptions & { ends: boolean },
+  ): Promise<void> {
+    await this.send({
+      kind: 'execute',
+      statement: statement.number,
+      cursor: options.cursor ?? 0,
+      values,
+      rows: options.rows ?? 0,
+      ends: options.ends,
+      attributes: this.told.carried(),
+    });
+  }
+
+  /**
+   * Takes more rows of a cursor of `statement`.
+   *
+   * @param statement - the statement whose cursor is open
+   * @param options - how many rows to take, all by default, and the cursor's number, 0 by default
+   * @returns the rows, and whether the cursor has more: closed if not
+   * @throws {@link TurborelError} the server's: 24000 if the cursor is not open; 08006 if the connection is lost
+   */
+  async fetch(statement: Statement, options: CursorOptions = {}): Promise<Batch> {
+    await this.send({
+      kind: 'fetch',
+      statement: statement.number,
+      cursor: options.cursor ?? 0,
+      rows: options.rows ?? 0,
+    });
+    return this.#rows();
+  }
+
+  /**
+   * Closes a cursor of `statement`.
+   *
+   * @param statement - the statement whose cursor is open
+   * @param cursor - the cursor's number, 0 by default
+   * @throws {@link TurborelError} the server's: 24000 if it is not open; 08006 if the connection is lost
+   */
+  async close(statement: Statement, cursor = 0): Promise<void> {
+    await this.send({ kind: 'close', statement: statement.number, cursor });
+    await this.#completion();
+  }
+
+  /**
+   * Describes `statement` again, as it is now.
+   *
+   * @param statement - a statement this connection prepared
+   * @returns it, its parameters' types and columns as the server now gives them
+   * @throws {@link TurborelError} the server's: 26000 if it is no more; 08006 if `describe` was not granted
+   */
+  async describe(statement: Statement): Promise<Statement> {
+    await this.send({ kind: 'describe', what: 'statement', statement: statement.number, cursor: 0 });
+    return this.#prepared();
+  }
+
+  /**
+   * The columns of an open cursor of `statement`.
+   *
+   * @param statement - the statement whose cursor is open
+   * @param cursor - the cursor's number, 0 by default
+   * @returns its columns
+   * @throws {@link TurborelError} the server's: 24000 if it is not open; 08006 if `describe` was not granted
+   */
+  async describeCursor(statement: Statement, cursor = 0): Promise<readonly Column[]> {
+    await this.send({ kind: 'describe', what: 'cursor', statement: statement.number, cursor });
+    const reply = await this.receive();
+    if (reply.kind === 'description') return reply.columns;
+    throw this.#unexpected(reply, 'the server sent no Description');
+  }
+
+  /**
+   * Destroys `statement`, of no use after.
+   *
+   * @param statement - a statement this connection prepared
+   * @throws {@link TurborelError} the server's: 26000 if it is no more, 24000 if its cursor is open; 08006 if the connection is lost
+   */
+  async deallocate(statement: Statement): Promise<void> {
+    await this.send({ kind: 'deallocate', statement: statement.number });
+    await this.#completion();
+  }
+
+  /**
+   * Whether the server answers, with no worker of its taken.
+   *
+   * @throws {@link TurborelError} 08006 if `ping` was not granted, or the server is gone
+   */
+  async ping(): Promise<void> {
+    await this.send({ kind: 'ping' });
+    const reply = await this.receive();
+    if (reply.kind !== 'pong') throw this.#unexpected(reply, 'the server sent no Pong');
+  }
+
+  /**
+   * Puts the session back as it was at login: its transaction rolled
+   * back, told by notice 01T01; its prepared statements, cursors,
+   * temporary tables and settings gone; its user and cancel key kept.
+   *
+   * @throws {@link TurborelError} 08006 if `reset` was not granted, or the server is gone
+   */
+  async reset(): Promise<void> {
+    await this.send({ kind: 'reset' });
+    await this.#completion();
+  }
+
+  /**
+   * Sets the attributes each Query and Execute carries from now on, read
+   * in SQL by QUERY_ATTRIBUTE(name).
+   *
+   * @param attributes - each name and value; none, for none
+   * @throws {@link TurborelError} 08006 for attributes if `query-attributes` was not granted
+   */
+  setQueryAttributes(attributes: readonly Attribute[]): void {
+    if (attributes.length > 0 && !this.has(cap.QUERY_ATTRIBUTES)) {
+      throw connectionFailure(`the server did not grant ${cap.QUERY_ATTRIBUTES}`);
+    }
+    this.told.attributes = [...attributes];
+  }
+
+  /** @returns the log position of the last commit the server told of, once granted `commit-position` */
+  get commitPosition(): bigint | undefined {
+    return this.told.position;
+  }
+
+  /** @returns the rows the last statement changed, or the rows the last query returned once all were read, once granted `row-counts` */
+  get rowsAffected(): bigint | undefined {
+    return this.told.completed?.rows;
+  }
+
+  /** @returns the server's time for the last statement in microseconds, once granted `row-counts`: total, queued, locks */
+  get serverTime(): Timing | undefined {
+    return this.told.completed?.time;
+  }
+
+  /** @returns the identity values the last INSERT generated, in the order of its rows, once granted `generated-values` */
+  get lastGenerated(): readonly string[] {
+    return this.told.completed?.generated ?? [];
+  }
+
+  /** @returns each condition the last statement raised and completed with, once granted `conditions` */
+  get conditions(): readonly TurborelError[] {
+    return this.told.completed?.conditions ?? [];
+  }
+
+  /** @returns the conditions of `conditions`, taken, so each is told once */
+  takeConditions(): TurborelError[] {
+    const c = this.told.completed;
+    if (c === undefined) return [];
+    this.told.completed = { ...c, conditions: [] };
+    return [...c.conditions];
+  }
+
+  /**
+   * The columns a statement's first reply gives.
    *
    * @param reply - the reply
-   * @returns it
+   * @returns its columns
    */
-  #noted(reply: Reply): Reply {
-    if (reply.kind === 'complete') this.#active = reply.completion.active;
-    else if (reply.kind === 'error') this.#active = reply.failure.active;
-    else if (reply.kind === 'description' || reply.kind === 'rows' || reply.kind === 'suspended') this.#active = true;
-    else if (reply.kind === 'lobData' || reply.kind === 'lobLocator') this.#active = true;
-    if (reply.kind === 'error' && endsConnection(reply.failure)) this.#lostBy(reply.failure);
-    return reply;
+  #columns(reply: Reply): readonly Column[] {
+    if (reply.kind === 'description') return reply.columns;
+    throw this.#unexpected(reply, 'the server sent no result');
   }
 
-  /**
-   * `failure`, the connection lost if it ends it.
-   *
-   * @param failure - the server's failure
-   * @returns it
-   */
-  #failed(failure: TurborelError): TurborelError {
-    if (endsConnection(failure)) this.#lostBy(failure);
-    return failure;
+  /** @returns the server's Complete, of a request sent */
+  async #completion(): Promise<Completion> {
+    const reply = await this.receive();
+    if (reply.kind === 'complete') return reply.completion;
+    throw this.#unexpected(reply, 'the server sent no completion');
   }
 
-  /**
-   * Loses the connection, for a connection failure `message`.
-   *
-   * @param message - what went wrong
-   * @returns the failure
-   */
-  #lose(message: string): TurborelError {
-    return this.#lostBy(connectionFailure(message));
-  }
-
-  /**
-   * Loses the connection for `failure`: it takes no more, and its socket is closed.
-   *
-   * @param failure - the failure
-   * @returns the failure that lost it, the first
-   */
-  #lostBy(failure: TurborelError): TurborelError {
-    this.#lost ??= failure;
-    this.#stream.destroy();
-    return failure;
-  }
-
-  /**
-   * Fails `failure` as the server's, losing the connection if it ends it (a later layer's entry).
-   *
-   * @param failure - the server's failure
-   * @returns it
-   */
-  failed(failure: TurborelError): TurborelError {
-    return this.#failed(failure);
-  }
-
-  /**
-   * Loses the connection, for a reply out of turn (a later layer's entry).
-   *
-   * @param message - what went wrong
-   * @returns the failure
-   */
-  lose(message: string): TurborelError {
-    return this.#lose(message);
-  }
-
-  /** @returns the session's authorization identifier, as Ready gave it */
-  get authorization(): string {
-    return this.#authorization;
-  }
-
-  /** @returns the server's product and version, as "turborel 0.0.0 (alpha)" */
-  get server(): string {
-    return this.#server;
-  }
-
-  /** @returns the capabilities granted, in Ready's order */
-  get granted(): readonly string[] {
-    return this.#told.granted;
-  }
-
-  /**
-   * Whether the server granted `name`.
-   *
-   * @param name - a capability's name
-   * @returns true if Ready granted it
-   */
-  has(name: string): boolean {
-    return this.#told.has(name);
-  }
-
-  /**
-   * The value of a session setting as the server last told it, with no round trip.
-   *
-   * @param name - the setting, as SESSION.TIME_ZONE, or a status, as AUTHORIZATION
-   * @returns its value, empty for a null, or undefined if the server told none of that name
-   */
-  setting(name: string): string | undefined {
-    return this.#told.settings.get(name);
-  }
-
-  /** @returns every setting the server told, by name */
-  settings(): ReadonlyMap<string, string> {
-    return new Map(this.#told.settings);
-  }
-
-  /**
-   * Takes each notice from now on as it comes; none, they are kept, the last 64.
-   *
-   * @param handler - what takes them, or undefined to keep them
-   */
-  setNoticeHandler(handler: NoticeHandler | undefined): void {
-    this.#told.handler = handler;
-  }
-
-  /** @returns the notices kept, taken */
-  takeNotices(): Notice[] {
-    return this.#told.notices.splice(0);
-  }
-
-  /** @returns whether the session's transaction is active, as the server last said */
-  get inTransaction(): boolean {
-    return this.#active;
-  }
-
-  /** @returns whether the connection is lost, taking no more */
-  get isLost(): boolean {
-    return this.#lost !== undefined;
-  }
-
-  /** @returns where its server is, if it was reached at a target */
-  get target(): Target | undefined {
-    return this.#target;
-  }
-
-  /** @returns its cancel key, the client's secret, kept for a canceller alone */
-  cancelKey(): Uint8Array | undefined {
-    return this.#key?.slice();
-  }
-
-  /** @returns how long each read or write waits, in milliseconds; undefined for no limit */
-  get readTimeout(): number | undefined {
-    return this.#timeouts.read;
-  }
-
-  /**
-   * How long each read or write of the server waits from now on.
-   *
-   * @param ms - the milliseconds, or undefined for no limit
-   */
-  setReadTimeout(ms: number | undefined): void {
-    this.#timeouts = { ...this.#timeouts, read: ms };
-  }
-
-  /**
-   * Takes replies of at most `bytes` bytes of body from now on; a longer one loses the connection.
-   *
-   * @param bytes - the longest body taken, 16 MiB unless this says
-   */
-  setMaxBody(bytes: number): void {
-    this.#maxBody = bytes;
-  }
-
-  /**
-   * Ends the connection, once the server has ended its session as
-   * SESSION.COMMIT_AT_END says and closed it, waiting at most the read
-   * timeout, else 60 seconds.
-   *
-   * @throws {@link TurborelError} the server's failure, as a commit that fails as the session ends; 08006 if it does not close in time
-   */
-  async terminate(): Promise<void> {
-    await this.#send({ kind: 'terminate' });
-    const rest = await this.#stream.closed(this.#maxBody, this.#timeouts.read ?? TERMINATE_WITHIN);
-    this.#lost ??= connectionFailure('the connection was terminated');
-    if (rest.byteLength < HEADER_BYTES) return;
-    const { kind, length } = decodeHeader(rest.subarray(0, HEADER_BYTES), this.#maxBody);
-    const reply = decodeReply(kind, rest.subarray(HEADER_BYTES, HEADER_BYTES + length));
-    if (reply.kind === 'error') throw reply.failure;
-    if (reply.kind !== 'notice' && reply.kind !== 'status' && reply.kind !== 'pong') {
-      throw connectionFailure('the server answered Terminate');
+  /** @returns the rows the server sends until it says whether the cursor has more, and whether it has */
+  async #rows(): Promise<Batch> {
+    const rows: Rows = [];
+    for (;;) {
+      const reply = await this.receive();
+      if (reply.kind === 'rows') append(rows, reply.rows);
+      else if (reply.kind === 'complete') return { rows, more: false };
+      else if (reply.kind === 'suspended') return { rows, more: true };
+      else throw this.#unexpected(reply, 'the server broke off its rows');
     }
   }
 
-  /** Closes the connection at once, telling the server nothing. */
-  destroy(): void {
-    this.#lostBy(connectionFailure('the connection was closed'));
-  }
-
-  /** @returns where it reached, as whom, and whether it is lost: never its cancel key */
-  toString(): string {
-    return `Connection(${this.#authorization}${this.isLost ? ', lost' : ''})`;
+  /**
+   * The failure of a reply other than the one awaited: the server's, if it is an Error, else the connection lost.
+   *
+   * @param reply - the reply
+   * @param message - what the server failed to send
+   * @returns the failure, to be thrown
+   */
+  #unexpected(reply: Reply, message: string): TurborelError {
+    return reply.kind === 'error' ? this.failed(reply.failure) : this.lose(message);
   }
 }
 
 /**
- * The notice of a Notice reply.
+ * Appends `batch` to `rows`, one by one, so no batch's length bounds it.
  *
- * @param reply - the reply
- * @returns the notice
+ * @param rows - the rows so far
+ * @param batch - the batch
  */
-function noticeOf(reply: Extract<Reply, { kind: 'notice' }>): Notice {
-  return {
-    sqlstate: reply.sqlstate,
-    message: reply.message,
-    ...(reply.diagnostics === undefined ? {} : { diagnostics: reply.diagnostics }),
-  };
+function append(rows: Rows, batch: readonly (readonly Value[])[]): void {
+  for (const row of batch) rows.push(row);
 }

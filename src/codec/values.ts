@@ -13,6 +13,7 @@ import type { Json } from './json.js';
 import type { Qualifier, TypeName } from './types.js';
 import { checkUnits } from './decimal.js';
 import { apiMisuse } from '../error.js';
+import { type XmlNode, parseContent } from '../xml/nodes.js';
 
 /** The octets of a UUID. */
 export const UUID_OCTETS = 16;
@@ -243,6 +244,16 @@ export class Xml {
   /** @returns its serialization */
   toString(): string {
     return this.text;
+  }
+
+  /**
+   * Its nodes, parsed from its serialization as XML content, its whitespace kept.
+   *
+   * @returns its nodes, in order
+   * @throws {@link TurborelError} 2200N if its text is not well-formed XML content
+   */
+  nodes(): XmlNode[] {
+    return parseContent(this.text);
   }
 }
 

@@ -14,6 +14,10 @@ import { REPLY } from '../../src/codec/kinds.js';
 import { Writer } from '../../src/codec/writer.js';
 import { type Frame, FrameStream } from '../../src/transport/frames.js';
 import { type Target, local, tcp } from '../../src/transport/target.js';
+import { type Column, writeColumn, writeFailure, writeRow } from '../../src/codec/composite.js';
+import { MORE, writeMark } from '../../src/codec/tail.js';
+import type { Value } from '../../src/codec/values.js';
+import type { TurborelError } from '../../src/error.js';
 
 /** How many local sockets this process has made, so each has a name of its own. */
 let made = 0;
@@ -68,6 +72,55 @@ export class Peer {
   ready(granted: readonly string[] = [], authorization = 'ANN'): void {
     this.reply(String.fromCharCode(REPLY.READY), (w) => {
       w.string(authorization).key(new Uint8Array(16).fill(7)).strings(granted).string('turborel 0.0.0 (alpha)');
+    });
+  }
+
+  /**
+   * Sends Complete: SQLCODE, SQLSTATE and active, and the tail's `more`.
+   *
+   * @param done - its fields, SQLCODE 0, SQLSTATE 00000, no transaction active and no more by default
+   */
+  complete(done: { sqlcode?: number; sqlstate?: string; active?: boolean; more?: boolean } = {}): void {
+    this.reply('K', (w) => {
+      w.i32(done.sqlcode ?? 0)
+        .string(done.sqlstate ?? '00000')
+        .flag(done.active ?? false);
+      writeMark(w, MORE, done.more ?? false);
+    });
+  }
+
+  /**
+   * Sends Description.
+   *
+   * @param columns - the columns
+   */
+  description(columns: readonly Column[]): void {
+    this.reply('D', (w) => {
+      w.u32(columns.length);
+      for (const c of columns) writeColumn(w, c);
+    });
+  }
+
+  /**
+   * Sends Rows.
+   *
+   * @param rows - the rows
+   */
+  rows(rows: readonly (readonly Value[])[]): void {
+    this.reply('B', (w) => {
+      w.u32(rows.length);
+      for (const r of rows) writeRow(w, r);
+    });
+  }
+
+  /**
+   * Sends Error.
+   *
+   * @param failure - the failure
+   */
+  error(failure: TurborelError): void {
+    this.reply('E', (w) => {
+      writeFailure(w, failure);
     });
   }
 
