@@ -59,6 +59,7 @@ Each is told in full in [§7](#7-the-decisions).
 | D14 | ESLint with typescript-eslint, and Prettier, rather than Biome |
 | D15 | Tests on `node:test` against the compiled code; coverage by c8 |
 | D16 | The development dependencies |
+| D17 | Each value of the protocol is a JavaScript type that holds it exactly, or a class of the driver's own |
 
 ---
 
@@ -572,6 +573,47 @@ own account, and each under a license that lets it be used so.
 `eslint-plugin-tsdoc` is at 0.5, below 1.0, as it has always been. It is
 TSDoc's own linter, made by the project that defines the syntax, and runs
 only in the lint.
+
+#### D17. Each value of the protocol is a JavaScript type that holds it exactly, or a class of the driver's own
+
+The codec (`src/codec/value-codec.ts`) gives each of the protocol's
+values (`[PROTOCOL Values]`) as the JavaScript type that holds it with no
+loss, and as a small immutable class of the driver's own where none does
+(`src/codec/values.ts`), and takes each back as the same value, so a
+value read and sent again is written byte for byte as it came:
+
+| Tag | Value | JavaScript |
+|---|---|---|
+| 0 | null | `null` |
+| 1 | character string | `string` |
+| 2 | exact number | `bigint` of scale 0, else `Decimal` (D11) |
+| 3 | approximate number | `number`, its bits kept |
+| 4 | a plug-in's value | `PluginValue`, its type's name, text and bytes, sent back unchanged |
+| 6 | binary string | `Uint8Array` |
+| 8, 9, 11 | date, time, timestamp | `Datetime`, its moment, zone flag, precision, displacement and instant in microseconds, a `bigint` |
+| 13 | interval | `Interval`, its qualifier and units, a `bigint` |
+| 14 | truth value | `boolean` |
+| 15 | decimal floating point | `DecFloat` (D11) |
+| 16, 17, 22 | array, row, multiset | an array, `SqlRow`, `Multiset` |
+| 20, 21 | large object, whole or by locator | `Lob`, of text or octets, and `LobLocator` |
+| 23 | structured value | `Structured`, its type's name and attributes |
+| 24 | reference | `Reference`, its octets |
+| 25 | JSON | `Json`, its tree checked whole, its item read as `JsonItem` |
+| 26 | XML | `Xml`, its serialization |
+| 27 | UUID | `Uuid`, its 16 octets and its text |
+
+A JavaScript `Date` is not taken for a datetime: it holds milliseconds in
+local time, not a precision and a displacement, and the standard API
+(D2) gives that mapping in milestone M7. A value of a type the protocol
+carries none of, `undefined` among them, is refused with SQLCODE -910
+and SQLSTATE TB910 (D12).
+
+A JSON value's item is the SQL/JSON item turborel stores: an exact number
+a `bigint` or a `Decimal`, an approximate one a `number`, a DECFLOAT a
+`DecFloat`, a datetime a `Datetime`, and an object a `JsonObject`, its
+members in the order written, a key perhaps more than once. One is made
+of those, or of plain objects and arrays of them; a `number` is written
+as an approximate number, as D11 sends one.
 
 ---
 

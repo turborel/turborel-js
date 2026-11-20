@@ -31,6 +31,11 @@ export default defineConfig(
       },
     },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
+    rules: {
+      // Off, as it recurses without end on a recursive type, as JsonItem
+      // is, and stops the lint (typescript-eslint 8.73) (R-LINT-2).
+      '@typescript-eslint/no-unsafe-class-instance-assignment': 'off',
+    },
   },
   {
     files: ['src/**/*.ts', 'test/**/*.ts', 'tools/**/*.ts'],

@@ -65,6 +65,7 @@ turborel-client gives the same failure.
 | 08006 | -919 | A message that cannot be read: a frame cut short, a body past the limit taken, a field malformed |
 | 22003 | -301 | A number past what the protocol carries, as an exact number's units past 128 bits |
 | 22021 | -301 | A string holding a lone surrogate, which is no Unicode character |
+| 0A000 | -900 | A value past turborel's limits, as a JSON value nested past 128 levels |
 | TB910 | -910 | An argument of a type or range the driver does not take |
 
 The server's failures, and the rest of the driver's, are added as the

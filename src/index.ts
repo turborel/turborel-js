@@ -21,6 +21,22 @@ export { TurborelError } from './error.js';
 export type { Diagnostics, TurborelErrorOptions } from './error.js';
 export { Decimal } from './codec/decimal.js';
 export { DecFloat } from './codec/decfloat.js';
+export {
+  Datetime,
+  Interval,
+  Lob,
+  LobLocator,
+  Multiset,
+  PluginValue,
+  Reference,
+  SqlRow,
+  Structured,
+  Uuid,
+  Xml,
+} from './codec/values.js';
+export type { LobKind, Moment, Value } from './codec/values.js';
+export { Json, JsonObject } from './codec/json.js';
+export type { JsonInput, JsonItem } from './codec/json.js';
 export type {
   CharUnits,
   DataType,
