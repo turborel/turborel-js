@@ -14,7 +14,7 @@ import { TurborelError } from '../error.js';
 import type { Mechanism } from '../auth/mechanism.js';
 import { SQLSTATE_INVALID_AUTHORIZATION } from '../auth/scram-exchange.js';
 import { FrameStream } from '../transport/frames.js';
-import { type Target, isPlainTcp, open } from '../transport/target.js';
+import { type Opened, type Target, isPlainTcp, open } from '../transport/target.js';
 
 /** SQLCODE of a connection exception, of credentials refused before connecting. */
 const SQLCODE_CONNECTION = -919;
@@ -57,12 +57,31 @@ export async function connectTo(
 ): Promise<Connection> {
   refuseInTheClear(target, mechanism);
   const timeouts = options.timeouts ?? DEFAULT_TIMEOUTS;
-  const opened = await open(target, timeouts.connect);
+  return logIn(target, await open(target, timeouts.connect), user, mechanism, { ...options, timeouts });
+}
+
+/**
+ * Logs in over a socket opened to `target`, the mechanism bound to its TLS channel, if it has one.
+ *
+ * @param target - where the socket reached
+ * @param opened - the socket, and its channel
+ * @param user - the user
+ * @param mechanism - what proves the user
+ * @param options - what the connection asks for and how long it waits
+ * @returns the connection, logged in
+ */
+export async function logIn(
+  target: Target,
+  opened: Opened,
+  user: string,
+  mechanism: Mechanism,
+  options: Omit<OpenOptions, 'target' | 'boundedReads'> = {},
+): Promise<Connection> {
   if (opened.channel !== undefined) mechanism.bind(opened.channel);
   const pipe = target.kind === 'local' && process.platform === WINDOWS;
   return Connection.open(new FrameStream(opened.socket), user, mechanism, {
     ...options,
-    timeouts,
+    timeouts: options.timeouts ?? DEFAULT_TIMEOUTS,
     target,
     boundedReads: !pipe,
   });

@@ -14,7 +14,8 @@
  * milestone by milestone, over the low-level client it exports: so far
  * its connections, by every transport and mechanism, the statements they
  * run, prepared or not, their large objects, copies, imports and exports,
- * its error type, and the values and data types its codec reads and
+ * connecting by settings, a URI and their files to one of several
+ * servers, its error type, and the values and data types its codec reads and
  * writes.
  *
  * @packageDocumentation
@@ -82,3 +83,11 @@ export type { Cause, ImportOptions, Imported, Rejected } from './import/import.j
 export { importInto } from './import/run.js';
 export { SourceError } from './import/source.js';
 export type { Heading, Position, Source, SourceRecord } from './import/source.js';
+export { ENVIRONMENT, KEYS, Options, SCHEME } from './settings/options.js';
+export type { Key } from './settings/options.js';
+export { DEFAULT_HOST, DEFAULT_PASSFILE, DEFAULT_SERVICE_FILE, Settings } from './settings/settings.js';
+export type { Host, LoadBalance, TargetRole } from './settings/settings.js';
+export { ROLE_QUERY, role } from './settings/failover.js';
+export type { Role } from './settings/failover.js';
+export { modeConfig } from './tls/modes.js';
+export type { TlsFiles, TlsMode } from './tls/modes.js';

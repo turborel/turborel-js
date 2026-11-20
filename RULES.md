@@ -62,6 +62,7 @@ Each is told in full in [§7](#7-the-decisions).
 | D17 | Each value of the protocol is a JavaScript type that holds it exactly, or a class of the driver's own |
 | D18 | A connection is a promise of replies over Node.js's own sockets, each wait bounded as turborel-client bounds it |
 | D19 | Bulk data moves through Node.js's streams and iterables, a copy holding the connection until it ends |
+| D20 | Settings are read as turborel-client reads them, from Node.js's own environment, home directory and resolver |
 
 ---
 
@@ -673,6 +674,20 @@ A value's text, which an export writes and `textOf` gives, is turborel's
 `Display` of the value, and `literalOf` its `to_literal`, so a CSV file
 of a query reads the same from every driver and from turboreld's own
 client.
+
+#### D20. Settings are read as turborel-client reads them, from Node.js's own environment, home directory and resolver
+
+Connection settings, the URI, the service file and the password file
+are read by the rules of turborel-client's `settings/`, its tests'
+cases among this driver's (R-TEST-9). What the platform gives, Node.js
+gives: the environment is `process.env`, or a function the program
+gives; the home directory, of the default service and password files,
+is `os.homedir()`; a host's addresses are those `dns.lookup` gives, all
+of them, in the resolver's order. A password file is read only if
+`fs.statSync` finds a regular file, a link followed to one; like
+turborel-client, the driver checks no owner or permissions. The SCRAM
+key cache is the settings object's own, so every connection one
+settings object makes shares it.
 
 ---
 

@@ -9,8 +9,8 @@
  * @packageDocumentation
  */
 
-import { type Socket, connect as connectNet } from 'node:net';
-import { type ConnectionOptions, type TLSSocket, connect as connectTls } from 'node:tls';
+import { type Socket, connect as connectNet, isIP } from 'node:net';
+import { type ConnectionOptions, type TLSSocket, checkServerIdentity, connect as connectTls } from 'node:tls';
 
 import { within } from './frames.js';
 import { channelOf } from '../tls/channel.js';
@@ -104,14 +104,68 @@ async function connected(socket: Socket, event: string, ms: number | undefined, 
 }
 
 /**
- * The options Node.js's TLS connects by, of a configuration and a host.
+ * The options Node.js's TLS connects by, of a configuration and a host:
+ * the server's certificate checked against the configuration's server
+ * name, else the host's, which is sent as the server's name too unless it
+ * is an address.
  *
  * @param host - the host connected to
+ * @param port - its port
  * @param config - the configuration
  * @returns the options
  */
 function tlsOptions(host: string, port: number, config: TlsConfig): ConnectionOptions {
-  return { ...config.options, host, port, servername: config.serverName ?? host };
+  const name = config.serverName ?? host;
+  return {
+    checkServerIdentity: (_: string, cert) => checkServerIdentity(name, cert),
+    ...config.options,
+    host,
+    port,
+    ...(isIP(name) === 0 ? { servername: name } : {}),
+  };
+}
+
+/**
+ * Begins TLS over a connected socket.
+ *
+ * @param socket - the socket, connected
+ * @param target - the TLS target it reached
+ * @param ms - the milliseconds the handshake may take
+ * @returns the TLS socket, and its channel
+ */
+async function secure(
+  socket: Socket,
+  target: Extract<Target, { kind: 'tls' }>,
+  ms: number | undefined,
+): Promise<Opened> {
+  const secured: TLSSocket = connectTls({ ...tlsOptions(target.host, target.port, target.tls), socket });
+  await connected(secured, 'secureConnect', ms, 'the TLS handshake failed');
+  return { socket: secured, channel: channelOf(secured) };
+}
+
+/**
+ * Opens a socket to `target` as `open` does, but over TLS if the server
+ * takes it, else over plain TCP: a server reached whose handshake fails
+ * connected to again without TLS; one that cannot be reached not tried
+ * twice.
+ *
+ * @param target - where the server is
+ * @param ms - the milliseconds each step may take
+ * @returns the target reached, plain if TLS failed, and the socket
+ */
+export async function openPreferring(
+  target: Target,
+  ms: number | undefined,
+): Promise<{ target: Target; opened: Opened }> {
+  if (target.kind !== 'tls') return { target, opened: await open(target, ms) };
+  const plain = tcp(target.host, target.port);
+  const { socket } = await open(plain, ms);
+  try {
+    return { target, opened: await secure(socket, target, ms) };
+  } catch {
+    socket.destroy();
+    return { target: plain, opened: await open(plain, ms) };
+  }
 }
 
 /**
@@ -135,10 +189,13 @@ export async function open(target: Target, ms: number | undefined): Promise<Open
       return { socket };
     }
     case 'tls': {
-      const socket: TLSSocket = connectTls(tlsOptions(target.host, target.port, target.tls));
-      socket.setNoDelay(true);
-      await connected(socket, 'secureConnect', ms, 'the TLS handshake failed');
-      return { socket, channel: channelOf(socket) };
+      const { socket } = await open(tcp(target.host, target.port), ms);
+      try {
+        return await secure(socket, target, ms);
+      } catch (e) {
+        socket.destroy();
+        throw e;
+      }
     }
   }
 }

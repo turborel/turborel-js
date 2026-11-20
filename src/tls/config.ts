@@ -40,7 +40,7 @@ export interface TlsConfig {
  * @returns its text
  * @throws {@link TurborelError} 08006 if it cannot be read
  */
-function readText(path: string): string {
+export function readText(path: string): string {
   try {
     return readFileSync(path, 'utf8');
   } catch (e) {
