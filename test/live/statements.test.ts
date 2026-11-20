@@ -284,7 +284,17 @@ test('CALL output parameters', async (t) => {
   await conn.query(
     'CREATE PROCEDURE TWICE(IN A INTEGER, INOUT B INTEGER, OUT C INTEGER) LANGUAGE SQL CONTAINS SQL BEGIN SET C = A * 2; SET B = B + 1; END',
   );
-  const call = await conn.prepare('CALL TWICE(?, ?, ?)');
+  const call = await conn.prepare('CALL TWICE(?, ?, ?)').catch((e: unknown) => {
+    // A server before Turborel's b40bd830, as the nightly image may be
+    // for a while, takes no `?` for an OUT parameter.
+    if (!(e instanceof TurborelError && e.message.includes('shall be a target specification'))) throw e;
+    return undefined;
+  });
+  if (call === undefined) {
+    t.skip('the server predates CALL output parameters (Turborel b40bd830)');
+    await conn.terminate();
+    return;
+  }
   assert.equal(call.parameters.length, 2, 'A and B, the inputs');
   assert.deepEqual(
     call.columns.map((c) => c.name),
