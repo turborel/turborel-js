@@ -16,7 +16,7 @@ D17). A value read and sent again is written byte for byte as it came.
 | 3 | approximate number | `number` | the double's bits, -0.0 and NaN among them |
 | 4 | a plug-in's value | `PluginValue` | its type's name, its text and its bytes, sent back unchanged |
 | 6 | binary string, of BINARY or BINARY VARYING | `Uint8Array` | |
-| 8, 9, 11 | date, time, timestamp | `Datetime` | instant in microseconds in UTC, a 64-bit signed `bigint`; displacement in minutes, -32,768 to 32,767; precision 0 to 255 |
+| 8, 9, 11 | date, time, timestamp | `Datetime` | instant in microseconds in UTC from 0001-01-01 00:00:00, a 64-bit signed `bigint`, a date's its midnight's and a time's from midnight UTC; displacement in minutes, -32,768 to 32,767; precision 0 to 255 |
 | 13 | interval | `Interval` | units within 128 bits, signed: months of a year-month interval, microseconds of a day-time one |
 | 14 | truth value | `boolean` | unknown is `null` |
 | 15 | decimal floating point | `DecFloat` | at most 34 digits; exponent of the leading digit -6143 to 6144 |

@@ -79,7 +79,10 @@ export class Datetime {
   readonly precision: number;
   /** The displacement it is shown in, in minutes east of UTC. */
   readonly zone: number;
-  /** Its instant, in microseconds since 1970 in UTC. */
+  /**
+   * Its instant, in microseconds in UTC from 0001-01-01 00:00:00: of a
+   * date, its midnight's; of a time, from midnight UTC, within a day.
+   */
   readonly utc: bigint;
 
   /**

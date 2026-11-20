@@ -1,13 +1,13 @@
 /**
  * The headings of Turborel's documents a citation may name (RULES.md D6),
- * copied from Turborel's main at e4f08f77, the commit CONFORMANCE.md
+ * copied from Turborel's main at 1c4187e4, the commit CONFORMANCE.md
  * names: The Native Protocol, `doc/client/05-protocol.md`, and The Client
  * Library and Settings, Pipelines and Pools, `doc/client/02-library.md`
  * and `doc/client/02-library-connections.md`, which share no heading.
  */
 
 /** The Turborel commit the headings are copied at. */
-export const TURBOREL_COMMIT = 'e4f08f77';
+export const TURBOREL_COMMIT = '1c4187e4';
 
 /** The headings of The Native Protocol, in its order. */
 export const PROTOCOL_HEADINGS: readonly string[] = [

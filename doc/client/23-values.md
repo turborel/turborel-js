@@ -35,7 +35,9 @@ an immutable class of the driver's own where none does (RULES.md D17).
   a `number`, its bits kept; a `number` is always sent as one.
 - `Datetime` is a date, time or timestamp: its `moment`, whether it is
   `zoned`, its `precision`, the displacement it is shown in, `zone`, in
-  minutes, and its instant, `utc`, in microseconds since 1970 in UTC.
+  minutes, and its instant, `utc`, in microseconds in UTC from
+  0001-01-01 00:00:00: of a date, its midnight's; of a time, from
+  midnight UTC, within a day.
 - `Interval` is its `qualifier` and its `units`, months of a year-month
   interval and microseconds of a day-time one.
 - An array is an array of values; `SqlRow`, `Multiset` and `Structured`
