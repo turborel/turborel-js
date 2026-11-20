@@ -77,3 +77,17 @@ export function decodeHeader(bytes: Uint8Array, max: number): FrameHeader {
   }
   return { kind: view.getUint8(0), length };
 }
+
+/**
+ * The frame of kind `kind` whose body is `body`: its header, then the body.
+ *
+ * @param kind - the message's kind
+ * @param body - its body
+ * @returns the frame's bytes
+ */
+export function encodeFrame(kind: number, body: Uint8Array): Uint8Array {
+  const frame = new Uint8Array(HEADER_BYTES + body.byteLength);
+  frame.set(encodeHeader({ kind, length: body.byteLength }));
+  frame.set(body, HEADER_BYTES);
+  return frame;
+}
