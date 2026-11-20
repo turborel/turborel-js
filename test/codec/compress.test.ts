@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { deflateSync } from 'node:zlib';
 
-import { DEFAULT_THRESHOLD, compressFrames, decompress } from '../../src/codec/compress.js';
+import { DEFAULT_THRESHOLD, compressFrames, decompress, received } from '../../src/codec/compress.js';
 import { HEADER_BYTES, MAX_BODY, decodeHeader } from '../../src/codec/frame.js';
 import { encodeRequest } from '../../src/codec/requests.js';
 import { isConnectionFailure } from '../support/failures.js';
@@ -111,4 +111,13 @@ test('a malformed compressed frame fails the connection', () => {
     isConnectionFailure,
     'a length of 0 that inflates to more',
   );
+});
+
+/** Verifies: [PROTOCOL Compressed frames] a z frame received when compression was not granted fails the connection; another frame is read as it is. */
+test('a compressed frame needs compression granted', () => {
+  const plain = { kind: 0x4b, body: Uint8Array.of(1) };
+  assert.equal(received(plain, false, MAX_BODY), plain);
+  const z = { kind: 0x7a, body: framed(0x42, 3, deflateSync(Uint8Array.of(1, 2, 3))) };
+  assert.throws(() => received(z, false, MAX_BODY), isConnectionFailure);
+  assert.deepEqual(received(z, true, MAX_BODY), { kind: 0x42, body: Uint8Array.of(1, 2, 3) });
 });

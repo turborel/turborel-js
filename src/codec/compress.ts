@@ -114,3 +114,19 @@ export function decompress(body: Uint8Array, max: number): Inflated {
     throw connectionFailure('a compressed frame inflates to another length than it declares');
   return { kind, body: inflated };
 }
+
+/**
+ * The frame a received frame of kind `kind` and body `body` is: itself,
+ * or, of kind `z`, the frame it holds, inflated within `max`.
+ *
+ * @param frame - the received frame's kind and body
+ * @param compression - whether `compression` was granted
+ * @param max - the longest body taken
+ * @returns the frame to read
+ * @throws {@link TurborelError} 08006 for a `z` frame when compression was not granted, or one malformed
+ */
+export function received(frame: Inflated, compression: boolean, max: number): Inflated {
+  if (frame.kind !== COMPRESSED) return frame;
+  if (!compression) throw connectionFailure('a compressed frame was received, but compression was not granted');
+  return decompress(frame.body, max);
+}
