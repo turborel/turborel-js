@@ -39,6 +39,7 @@ class Settings {
 }
 
 type Host = { kind: 'tcp'; name: string; port: number } | { kind: 'local'; path: string };
+function serviceFile(file: string, name: string): Options;
 function role(conn: Connection): Promise<'read-write' | 'read-only' | 'unknown'>;
 function modeConfig(mode: TlsMode, files: TlsFiles): TlsConfig | undefined;
 ```
@@ -48,7 +49,7 @@ function modeConfig(mode: TlsMode, files: TlsFiles): TlsConfig | undefined;
 `Options` is a layer of settings, each by its name ([Appendix
 C](../appendix/c-settings.md)); `over` lays one over another;
 `environment` reads the TURBOREL_ variables; `fromUri` reads a
-`turborel://` URI. `Settings.resolve` lays the program's options, then
+`turborel://` URI; `serviceFile` reads a service file's section. `Settings.resolve` lays the program's options, then
 the service file's section they or the environment name, then the
 environment, then the defaults, and reads them. `passwordFor` gives the
 settings' password, else the password file's for a server.

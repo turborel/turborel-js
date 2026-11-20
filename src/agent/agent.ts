@@ -249,6 +249,11 @@ export class Agent {
     return held.connection;
   }
 
+  /** @returns the current connection, if there is one, to read what its server last told it */
+  get currentConnection(): Connection | undefined {
+    return this.#heldCurrent()?.connection;
+  }
+
   /** @returns the current connection's name: undefined for the default one, or for none */
   get currentName(): string | undefined {
     return this.#current === undefined ? undefined : this.#held[this.#current]?.name;

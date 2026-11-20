@@ -24,6 +24,7 @@ class Pipeline {
   release(number: number): this;
   onError(onError: OnError): this;
   readonly length: number;
+  readonly isEmpty: boolean;
   run(): Promise<Piped[]>;
 }
 ```

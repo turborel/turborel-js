@@ -13,12 +13,15 @@
 function tcp(host: string, port?: number): Target;
 function local(path: string): Target;
 function overTls(host: string, tls: TlsConfig, port?: number): Target;
+function isPlainTcp(target: Target): boolean;
+function isTls(target: Target): boolean;
+function open(target: Target, ms: number | undefined): Promise<Opened>;
 function connectTo(target: Target, user: string, mechanism: Mechanism,
   options?: { offer?: Offer; timeouts?: Timeouts }): Promise<Connection>;
 
 class Trust; class Password; class Certificate;
 class Scram { constructor(password: string, options?: ScramOptions) }
-class KeyCache { size: number; lookups(): Lookups; clear(): void }
+class KeyCache { size: number; isEmpty: boolean; lookups(): Lookups; clear(): void }
 
 function trusting(file: string): TlsConfig;
 function roots(file: string | undefined, platform: boolean): string[];
@@ -40,6 +43,7 @@ class Connection {
   readTimeout: number | undefined; setReadTimeout(ms?: number): void; setMaxBody(bytes: number): void;
   ping(): Promise<void>; reset(): Promise<void>;
   changeUser(user: string, mechanism: Mechanism): Promise<void>;
+  canceller(): Canceller | undefined;
   terminate(): Promise<void>; destroy(): void;
 }
 
@@ -58,7 +62,9 @@ default, and waits as `options.timeouts` says: 30 seconds to connect,
 begin TLS and for each step of the login, then without limit. Over TLS
 it binds the mechanism to the connection's channel before the login.
 
-`Connection.open` logs in over a stream the program opened itself, a
+`open` opens a socket to a target, TLS begun, within `ms`; `isPlainTcp`
+and `isTls` say how a target is reached. `Connection.open` logs in over a
+stream the program opened itself, a
 `FrameStream` of its socket; a TLS stream's channel is bound by
 `mechanism.bind(channelOf(socket))` first. Such a connection cannot be
 reached again, so has no canceller.

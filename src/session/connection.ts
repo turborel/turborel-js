@@ -10,6 +10,7 @@
 
 import type { Readable } from 'node:stream';
 
+import { Canceller } from './cancel.js';
 import { Copying } from './copy.js';
 import { type ExportFormat, type ExportTarget, exportSink, nativeEnd } from './export.js';
 import type { OpenOptions } from './link.js';
@@ -55,6 +56,11 @@ export class Connection extends Runner {
     const connection = new Connection(stream, options);
     await connection.begin(user, mechanism, options.offer ?? Offer.default());
     return connection;
+  }
+
+  /** @returns what cancels the statement this connection runs, from elsewhere; none for a connection over a stream given to `open`, whose server it cannot reach again */
+  canceller(): Canceller | undefined {
+    return Canceller.of(this);
   }
 
   /**

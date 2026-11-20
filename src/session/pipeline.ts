@@ -205,6 +205,11 @@ export class Pipeline {
     return this.#queued.length;
   }
 
+  /** @returns whether none is queued */
+  get isEmpty(): boolean {
+    return this.#queued.length === 0;
+  }
+
   /**
    * Writes the requests, a window at a time, and reads one outcome for each, in the order they were queued.
    *

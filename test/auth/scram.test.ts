@@ -167,6 +167,7 @@ test('the key cache', async () => {
   assert.equal(String(cache), `KeyCache(${String(KEY_CACHE_ENTRIES)} entries)`);
   cache.clear();
   assert.equal(cache.size, 0);
+  assert.equal(cache.isEmpty, true);
 });
 
 /** Verifies: [CLIENT The SCRAM key cache] a mechanism given a cache takes its keys, and forgets them when its login fails. */

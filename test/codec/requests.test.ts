@@ -197,7 +197,7 @@ test('Describe', () => {
   );
 });
 
-/** Verifies: [PROTOCOL ChangeUser 'U'] ChangeUser is the user, the mechanism and its first bytes. */
+/** Verifies: [PROTOCOL Answer 'A'] [PROTOCOL ChangeUser 'U'] ChangeUser is the user, the mechanism and its first bytes. */
 test('ChangeUser and Answer', () => {
   assert.deepEqual(bytes({ kind: 'changeUser', user: 'Y', mechanism: 'p', initial: Uint8Array.of(1, 2) }), [
     0x55,
@@ -217,7 +217,7 @@ test('ChangeUser and Answer', () => {
   assert.deepEqual(bytes({ kind: 'answer', answer: new Uint8Array(0) }), [0x41, 4, 0, 0, 0, 0, 0, 0, 0]);
 });
 
-/** Verifies: [PROTOCOL CopyIn 'I'] CopyIn is the table, its columns and ends; CopyData a list of rows; CopyEnd the abandon flag. */
+/** Verifies: [PROTOCOL CopyData 'J'] [PROTOCOL CopyIn 'I'] CopyIn is the table, its columns and ends; CopyData a list of rows; CopyEnd the abandon flag. */
 test('CopyIn, CopyData and CopyEnd', () => {
   assert.deepEqual(bytes({ kind: 'copyIn', table: 'T', columns: ['A'], ends: true }), [
     0x49,

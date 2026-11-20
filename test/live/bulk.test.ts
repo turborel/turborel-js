@@ -131,7 +131,7 @@ test('large objects written', async (t) => {
   await conn.terminate();
 });
 
-/** Verifies: [CLIENT Copying and exporting] rows copied into the columns named or all, many to a message, the rows inserted counted whatever was granted; ping as it goes. */
+/** Verifies: [PROTOCOL Conversations] [CLIENT Copying and exporting] rows copied into the columns named or all, many to a message, the rows inserted counted whatever was granted; ping as it goes. */
 test('a copy', async (t) => {
   if (live(t) === undefined) return;
   const conn = await ann(new Offer([cap.COPY, cap.PING, cap.NOTICES]));
@@ -156,7 +156,7 @@ test('a copy', async (t) => {
   await conn.terminate();
 });
 
-/** Verifies: [PROTOCOL CopyEnd 'N'] all or nothing: a row refused undoes every row, the failure's detail naming it; abandoned, none is kept; under autocommit the copy commits; else a failing copy leaves the transaction's statements before it. */
+/** Verifies: [PROTOCOL Conversations] [PROTOCOL CopyEnd 'N'] all or nothing: a row refused undoes every row, the failure's detail naming it; abandoned, none is kept; under autocommit the copy commits; else a failing copy leaves the transaction's statements before it. */
 test('a copy all or nothing', async (t) => {
   if (live(t) === undefined) return;
   const conn = await ann();

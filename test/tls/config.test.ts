@@ -11,6 +11,7 @@ import { after, test } from 'node:test';
 import { rootCertificates } from 'node:tls';
 
 import { authorities, config, platformAuthorities, presentingTo, roots, trusting } from '../../src/tls/config.js';
+import { isPlainTcp, isTls, local, overTls, tcp } from '../../src/transport/target.js';
 import { isConnectionFailure } from '../support/failures.js';
 
 const dir = mkdtempSync(join(tmpdir(), 'turborel-js-tls-'));
@@ -70,4 +71,12 @@ test('a certificate presented', () => {
   const presented = presentingTo(['ca'], { chain: file('chain.pem', 'CHAIN'), key: file('key.pem', 'KEY') });
   assert.deepEqual(presented.options, { ca: ['ca'], cert: 'CHAIN', key: 'KEY' });
   assert.throws(() => presentingTo([], { chain: join(dir, 'none'), key: join(dir, 'none') }), isConnectionFailure);
+});
+
+/** Verifies: [CLIENT Connecting] a target is TLS, plain TCP, or local, as it says. */
+test('what a target is', () => {
+  const secured = overTls('db', config(['x']));
+  assert.deepEqual([isTls(secured), isPlainTcp(secured)], [true, false]);
+  assert.deepEqual([isTls(tcp('db')), isPlainTcp(tcp('db'))], [false, true]);
+  assert.deepEqual([isTls(local('/s')), isPlainTcp(local('/s'))], [false, false]);
 });

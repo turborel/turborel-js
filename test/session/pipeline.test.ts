@@ -58,6 +58,8 @@ async function server(granted: readonly string[] = [], lose = 'lose'): Promise<[
 /** Verifies: [CLIENT Pipelines] every request runs, a failure its own outcome; releases closed and destroyed. */
 test('a pipeline continues past a failure', async () => {
   const [conn, seen] = await server();
+  assert.equal(conn.pipeline().isEmpty, true);
+  assert.notEqual(conn.canceller(), undefined);
   const ran = await conn.pipeline().query('a').query('bad').query('c').release(4).run();
   assert.deepEqual(
     ran.map((p) => p.kind),

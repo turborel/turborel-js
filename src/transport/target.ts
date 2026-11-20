@@ -82,6 +82,16 @@ export function isPlainTcp(target: Target): boolean {
 }
 
 /**
+ * Whether `target` is TLS.
+ *
+ * @param target - the target
+ * @returns true if TLS secures it
+ */
+export function isTls(target: Target): boolean {
+  return target.kind === 'tls';
+}
+
+/**
  * Waits for a socket to connect, as `event` says it has.
  *
  * @param socket - the socket connecting

@@ -19,6 +19,7 @@ class Agent {
   queryInto(sql: string, sink: Sink): Promise<Streamed>;
   connectionStatement(sql: string): Promise<Completion | undefined>;
   current(): Connection;
+  readonly currentConnection: Connection | undefined;
   readonly currentName: string | undefined;
   readonly warning: string | undefined;
   readonly isLost: boolean;

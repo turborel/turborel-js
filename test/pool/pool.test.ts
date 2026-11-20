@@ -227,6 +227,7 @@ test("the agent's failures", async () => {
   assert.equal(warned.kind === 'done' && warned.completion.sqlstate, '01002');
   await assert.rejects(agent.query('DISCONNECT CURRENT'), isFailure(-919, '08003'));
   assert.equal(agent.warning, undefined);
+  assert.equal(agent.currentConnection, undefined);
   assert.equal(agent.canceller(), undefined);
   await agent.query('CONNECT TO DEFAULT');
   await agent.query('SET CONNECTION DEFAULT');

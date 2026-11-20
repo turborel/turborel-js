@@ -115,6 +115,11 @@ export class KeyCache {
     return this.#held.length;
   }
 
+  /** @returns whether it keeps no keys */
+  get isEmpty(): boolean {
+    return this.#held.length === 0;
+  }
+
   /** @returns how often the keys were found, and how often derived */
   lookups(): Lookups {
     return { hits: this.#hits, misses: this.#misses };

@@ -123,7 +123,7 @@ test('every kind of value', async (t) => {
   await conn.terminate();
 });
 
-/** Verifies: [CLIENT Running statements] a transaction begun by the first statement lasts until COMMIT or ROLLBACK, as the connection tells; under autocommit each statement is its own. */
+/** Verifies: [PROTOCOL Conversations] [CLIENT Running statements] a transaction begun by the first statement lasts until COMMIT or ROLLBACK, as the connection tells; under autocommit each statement is its own. */
 test('transactions and autocommit', async (t) => {
   if (live(t) === undefined) return;
   const conn = await withTable('TX', 1);
@@ -246,7 +246,7 @@ test('cursors', async (t) => {
   await conn.terminate();
 });
 
-/** Verifies: [PROTOCOL Execute 'E'] under autocommit with `fetch-ends`, a cursor's transaction ends as it does: its last row's fetch commits, close commits, a failing fetch rolls back. */
+/** Verifies: [PROTOCOL Conversations] [PROTOCOL Execute 'E'] under autocommit with `fetch-ends`, a cursor's transaction ends as it does: its last row's fetch commits, close commits, a failing fetch rolls back. */
 test('a cursor ends its transaction', async (t) => {
   if (live(t) === undefined) return;
   const conn = await withTable('ENDS', 3);

@@ -82,7 +82,7 @@ test('Prepared', () => {
   });
 });
 
-/** Verifies: [PROTOCOL Composite fields] a column is its named flag, its name if named, its type and its not null flag; a flag of 2 fails. */
+/** Verifies: [PROTOCOL Description 'D'] [PROTOCOL Composite fields] a column is its named flag, its name if named, its type and its not null flag; a flag of 2 fails. */
 test('Description, and columns', () => {
   const description = (flag: number, tag: number): number[] => [1, 0, 0, 0, flag, tag, 1, 0, 0, 0, 0, 0];
   assert.deepEqual(reply('D', description(0, 1)), {
@@ -102,7 +102,7 @@ test('Rows', () => {
   assert.throws(() => reply('B', [1, 0, 0, 0, 9, 0, 0, 0]), /reply received is malformed/u);
 });
 
-/** Verifies: [PROTOCOL Suspended 'S'] Suspended and Pong are a kind alone, and a byte after either fails. */
+/** Verifies: [PROTOCOL Pong 'G'] [PROTOCOL Suspended 'S'] Suspended and Pong are a kind alone, and a byte after either fails. */
 test('Suspended and Pong', () => {
   assert.deepEqual(reply('S', []), { kind: 'suspended' });
   assert.deepEqual(reply('G', []), { kind: 'pong' });

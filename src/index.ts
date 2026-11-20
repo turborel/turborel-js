@@ -50,7 +50,7 @@ export type {
   TypeName,
   XmlSchemaName,
 } from './codec/types.js';
-export { Certificate, Password, Trust } from './auth/mechanism.js';
+export { CERTIFICATE, Certificate, PASSWORD, Password, TRUST, Trust } from './auth/mechanism.js';
 export type { Mechanism, TlsChannel } from './auth/mechanism.js';
 export { Scram } from './auth/scram.js';
 export type { ChannelBinding, ScramOptions } from './auth/scram.js';
@@ -69,7 +69,8 @@ export { channelOf } from './tls/channel.js';
 export { config, platformAuthorities, presenting, presentingTo, roots, trusting } from './tls/config.js';
 export type { TlsConfig } from './tls/config.js';
 export { FrameStream } from './transport/frames.js';
-export { DEFAULT_PIPE, DEFAULT_PORT, local, overTls, tcp } from './transport/target.js';
+export { DEFAULT_PIPE, DEFAULT_PORT, isPlainTcp, isTls, local, open, overTls, tcp } from './transport/target.js';
+export type { Opened } from './transport/target.js';
 export type { Target } from './transport/target.js';
 export { CHUNK_OCTETS, LOB_INLINE_OCTETS, LobWriter } from './session/lobs.js';
 export { CHUNK_BYTES, Copying } from './session/copy.js';
@@ -85,6 +86,7 @@ export type { Heading, Position, Source, SourceRecord } from './import/source.js
 export { ENVIRONMENT, KEYS, Options, SCHEME } from './settings/options.js';
 export type { Key } from './settings/options.js';
 export { DEFAULT_HOST, DEFAULT_PASSFILE, DEFAULT_SERVICE_FILE, Settings } from './settings/settings.js';
+export { serviceFile } from './settings/files.js';
 export type { Host, LoadBalance, TargetRole } from './settings/settings.js';
 export { ROLE_QUERY, role } from './settings/failover.js';
 export type { Role } from './settings/failover.js';

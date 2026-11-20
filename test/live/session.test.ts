@@ -117,7 +117,7 @@ test('conditions, told one way', async (t) => {
   await neither.terminate();
 });
 
-/** Verifies: [CLIENT What the server tells] notices go to a handler as they come, before the statement's last reply; with none, the last are kept and taken. */
+/** Verifies: [PROTOCOL Conversations] [CLIENT What the server tells] notices go to a handler as they come, before the statement's last reply; with none, the last are kept and taken. */
 test('notices, to a handler or kept', async (t) => {
   if (live(t) === undefined) return;
   const conn = await ann(without(cap.CONDITIONS));
@@ -174,7 +174,7 @@ test('capabilities not asked for', async (t) => {
   await conn.terminate();
 });
 
-/** Verifies: [CLIENT Controlling the session] ping; reset rolls the transaction back, told by notice 01T01, its statements, temporary tables and settings gone, every setting told again. */
+/** Verifies: [PROTOCOL Conversations] [CLIENT Controlling the session] ping; reset rolls the transaction back, told by notice 01T01, its statements, temporary tables and settings gone, every setting told again. */
 test('ping and reset', async (t) => {
   if (live(t) === undefined) return;
   const conn = await ann();
