@@ -165,6 +165,12 @@ export class DecFloat {
     return `${sign}${digits.slice(0, 1)}${rest === '' ? '' : '.'}${rest}E${String(adjusted)}`;
   }
 
+  /** @returns it as a numeral, every digit written and no exponent, as JSON text writes it */
+  numeral(): string {
+    const sign = this.coefficient < 0n ? '-' : '';
+    return sign + plain((this.coefficient < 0n ? -this.coefficient : this.coefficient).toString(), this.exponent);
+  }
+
   /** @returns the `number` nearest it, which may lose digits */
   toNumber(): number {
     return Number(`${String(this.coefficient)}e${String(this.exponent)}`);

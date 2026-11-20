@@ -1,7 +1,8 @@
 /**
  * The composite fields (`[PROTOCOL Composite fields]`): a row, a column, a
  * parameter and a failure, with a failure's and a Notice's diagnostics,
- * tags 7 to 15 of the tail (`[PROTOCOL Errors and notices]`). Internal.
+ * tags 7 to 15 of the tail (`[PROTOCOL Errors and notices]`), and a
+ * row's size in a message. Internal.
  *
  * @packageDocumentation
  */
@@ -9,9 +10,12 @@
 import type { Reader } from './reader.js';
 import { SEVERITY, Tail, writeText } from './tail.js';
 import { type DataType, readType, writeType } from './types.js';
-import { readValues, writeValues } from './value-codec.js';
-import type { Value } from './values.js';
-import type { Writer } from './writer.js';
+import { DecFloat } from './decfloat.js';
+import { Decimal } from './decimal.js';
+import { Json } from './json.js';
+import { readValues, writeValue, writeValues } from './value-codec.js';
+import { Datetime, Interval, Lob, LobLocator, Reference, type Value } from './values.js';
+import { Writer } from './writer.js';
 import { type Diagnostics, TurborelError } from '../error.js';
 
 /** A column of a result, as Prepared and Description give it. */
@@ -174,4 +178,65 @@ export function readFailure(r: Reader): TurborelError {
     active,
     ...(diagnostics === undefined ? {} : { diagnostics }),
   });
+}
+
+/** The bytes a value's tag and its fixed fields take, of each kind sized without encoding. */
+const SIZE = {
+  NULL: 1,
+  NUMBER: 21,
+  APPROXIMATE: 9,
+  BOOLEAN: 2,
+  COUNTED: 5,
+  LOB: 6,
+  LOCATOR: 22,
+  DATETIME: 15,
+  INTERVAL: 33,
+};
+
+/**
+ * About the bytes `row` takes in a message, as turborel-protocol's
+ * `row_size` reckons them: a value of a fixed size its size, a string's
+ * or a binary string's its octets and their count, a composite's encoded.
+ *
+ * @param row - the values
+ * @returns their bytes, about
+ */
+export function rowSize(row: readonly Value[]): number {
+  let size = 0;
+  for (const v of row) size += valueSize(v);
+  return size;
+}
+
+/**
+ * About the bytes `v` takes.
+ *
+ * @param v - the value
+ * @returns its bytes
+ */
+function valueSize(v: Value): number {
+  if (v === null) return SIZE.NULL;
+  if (typeof v === 'string') return Buffer.byteLength(v) + SIZE.COUNTED;
+  if (typeof v === 'bigint' || v instanceof Decimal || v instanceof DecFloat) return SIZE.NUMBER;
+  if (typeof v === 'number') return SIZE.APPROXIMATE;
+  if (typeof v === 'boolean') return SIZE.BOOLEAN;
+  if (v instanceof Uint8Array) return v.byteLength + SIZE.COUNTED;
+  if (v instanceof Datetime) return SIZE.DATETIME;
+  if (v instanceof Interval) return SIZE.INTERVAL;
+  return heldSize(v);
+}
+
+/**
+ * About the bytes of a value that holds octets of its own, or a composite's, encoded.
+ *
+ * @param v - the value
+ * @returns its bytes
+ */
+function heldSize(v: Value): number {
+  if (v instanceof Lob) return (typeof v.data === 'string' ? Buffer.byteLength(v.data) : v.data.byteLength) + SIZE.LOB;
+  if (v instanceof LobLocator) return SIZE.LOCATOR;
+  if (v instanceof Reference) return v.octets.byteLength + SIZE.COUNTED;
+  if (v instanceof Json) return v.bytes.byteLength + SIZE.COUNTED;
+  const w = new Writer();
+  writeValue(w, v);
+  return w.length;
 }

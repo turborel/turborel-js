@@ -13,8 +13,9 @@
  * statements, cursors as async iterators and pools (RULES.md D2) is built
  * milestone by milestone, over the low-level client it exports: so far
  * its connections, by every transport and mechanism, the statements they
- * run, prepared or not, its error type, and the values and data types its
- * codec reads and writes.
+ * run, prepared or not, their large objects, copies, imports and exports,
+ * its error type, and the values and data types its codec reads and
+ * writes.
  *
  * @packageDocumentation
  */
@@ -70,3 +71,14 @@ export type { TlsConfig } from './tls/config.js';
 export { FrameStream } from './transport/frames.js';
 export { DEFAULT_PIPE, DEFAULT_PORT, local, overTls, tcp } from './transport/target.js';
 export type { Target } from './transport/target.js';
+export { CHUNK_OCTETS, LOB_INLINE_OCTETS, LobWriter } from './session/lobs.js';
+export { CHUNK_BYTES, Copying } from './session/copy.js';
+export { csvField, readNative } from './session/export.js';
+export type { ExportFormat, ExportTarget, NativeRows } from './session/export.js';
+export { approximateText, jsonText, literalOf, textOf } from './codec/text.js';
+export { DEFAULT_MAX_RECORD, Delimited, Dialect } from './import/delimited.js';
+export { DEFAULT_BATCH, ImportError } from './import/import.js';
+export type { Cause, ImportOptions, Imported, Rejected } from './import/import.js';
+export { importInto } from './import/run.js';
+export { SourceError } from './import/source.js';
+export type { Heading, Position, Source, SourceRecord } from './import/source.js';

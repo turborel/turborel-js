@@ -61,6 +61,7 @@ Each is told in full in [§7](#7-the-decisions).
 | D16 | The development dependencies |
 | D17 | Each value of the protocol is a JavaScript type that holds it exactly, or a class of the driver's own |
 | D18 | A connection is a promise of replies over Node.js's own sockets, each wait bounded as turborel-client bounds it |
+| D19 | Bulk data moves through Node.js's streams and iterables, a copy holding the connection until it ends |
 
 ---
 
@@ -647,6 +648,31 @@ The live tests run against a turboreld their set-up starts on port
 `openssl`, SCRAM users made by `turboreld user add`, and
 SERVER.TRUST_LOCAL ON; in CI, on Linux, the nightly image run with the
 host's network, so the same set-up serves both.
+
+#### D19. Bulk data moves through Node.js's streams and iterables, a copy holding the connection until it ends
+
+A large object's reader is a Node.js `Readable`, read a chunk a request;
+a writer is an object whose `write` is awaited, as an export's `out` is,
+so a program writes to a file stream or a buffer alike. A copy takes a
+row at a time, or the rows an iterable or async iterable gives; an
+import's `Delimited` reads chunks of octets from a stream or an array of
+them. A copy is disposable (`await using`), abandoned if it has not
+ended, as turborel-client's `Copying` is when dropped.
+
+turborel-client's types keep a program from sending another request
+while a copy is under way, its `Copying` borrowing the connection.
+JavaScript has no such check, so the connection refuses one, but for
+the copy's rows, its end and a ping, with SQLCODE -910 and SQLSTATE
+TB910, before anything is sent.
+
+An import's failure and a source's are `TurborelError`s (D12):
+`ImportError` carries its SQL condition's codes, or -301 and 22000 for
+an input that cannot be read or does not fit, as `SourceError` does.
+
+A value's text, which an export writes and `textOf` gives, is turborel's
+`Display` of the value, and `literalOf` its `to_literal`, so a CSV file
+of a query reads the same from every driver and from turboreld's own
+client.
 
 ---
 

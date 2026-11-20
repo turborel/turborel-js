@@ -12,6 +12,7 @@ import type { Decimal } from './decimal.js';
 import type { Json } from './json.js';
 import type { Qualifier, TypeName } from './types.js';
 import { checkUnits } from './decimal.js';
+import { datetimeText, hexText, intervalText } from './shown.js';
 import { apiMisuse } from '../error.js';
 import { type XmlNode, parseContent } from '../xml/nodes.js';
 
@@ -108,6 +109,11 @@ export class Datetime {
     this.zone = fields.zone;
     this.utc = fields.utc;
   }
+
+  /** @returns it as turborel shows it, in the displacement it is shown in: as `2026-11-19 10:00:00.25+02:00` */
+  toString(): string {
+    return datetimeText(this);
+  }
 }
 
 /** An interval: its qualifier, and its units, months of a year-month one and microseconds of a day-time one. */
@@ -128,6 +134,11 @@ export class Interval {
     this.qualifier = qualifier;
     this.units = units;
   }
+
+  /** @returns it as turborel shows it, its literal's string: as `1 02:30:00` of DAY TO SECOND */
+  toString(): string {
+    return intervalText(this.qualifier, this.units);
+  }
 }
 
 /** A large object held whole: a CLOB's text, or a BLOB's octets. */
@@ -145,6 +156,11 @@ export class Lob {
   constructor(data: string | Uint8Array) {
     this.kind = typeof data === 'string' ? 'character' : 'binary';
     this.data = data;
+  }
+
+  /** @returns a CLOB's text, or a BLOB's octets as hexits */
+  toString(): string {
+    return typeof this.data === 'string' ? this.data : hexText(this.data);
   }
 }
 
@@ -176,6 +192,13 @@ export class LobLocator {
     this.locator = locator;
     this.octets = lengths.octets;
     this.characters = lengths.characters;
+  }
+
+  /** @returns what it is, which a program reads by its locator */
+  toString(): string {
+    return this.kind === 'character'
+      ? `<CHARACTER LARGE OBJECT of ${String(this.characters)} characters>`
+      : `<BINARY LARGE OBJECT of ${String(this.octets)} octets>`;
   }
 }
 

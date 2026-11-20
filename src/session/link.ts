@@ -17,7 +17,7 @@ import { compressFrames, received } from '../codec/compress.js';
 import { HEADER_BYTES, MAX_BODY, decodeHeader } from '../codec/frame.js';
 import { type Reply, decodeReply } from '../codec/replies.js';
 import { type Request, encodeRequest } from '../codec/requests.js';
-import { type TurborelError, connectionFailure } from '../error.js';
+import { type TurborelError, apiMisuse, connectionFailure } from '../error.js';
 import type { Mechanism } from '../auth/mechanism.js';
 import type { FrameStream } from '../transport/frames.js';
 import type { Target } from '../transport/target.js';
@@ -64,6 +64,9 @@ export interface OpenOptions {
   /** Whether its reads and writes after the login are bounded by its read timeout; a named pipe's are not. */
   readonly boundedReads?: boolean;
 }
+
+/** The requests a client sends while a copy is under way, until its CopyEnd. */
+const DURING_COPY: ReadonlySet<Request['kind']> = new Set(['copyData', 'copyEnd', 'ping']);
 
 /** The capability each request with one needs, by its kind. */
 const NEEDED: Readonly<Partial<Record<Request['kind'], string>>> = {
@@ -123,6 +126,7 @@ export class Link {
   #compressFrom: number | undefined;
   #lost: TurborelError | undefined;
   #active = false;
+  #copying = false;
   #warning: string | undefined;
   #loggingIn = true;
 
@@ -247,9 +251,13 @@ export class Link {
    */
   async #send(request: Request): Promise<void> {
     if (this.#lost !== undefined) throw this.#lost;
+    if (this.#copying && !DURING_COPY.has(request.kind)) {
+      throw apiMisuse('a copy is under way: finish or abandon it before another request');
+    }
     const missing = this.#loggingIn ? [] : capabilitiesOf(request).filter((name) => !this.told.has(name));
     if (missing.length > 0) throw connectionFailure(`the server did not grant ${missing.join(', ')}`);
     const frame = encodeRequest(request);
+    if (request.kind === 'copyIn' || request.kind === 'copyEnd') this.#copying = request.kind === 'copyIn';
     const bytes = this.#compressFrom === undefined ? frame : compressFrames(frame, this.#compressFrom);
     try {
       await this.#stream.write(bytes, this.#wait());
