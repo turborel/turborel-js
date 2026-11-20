@@ -36,5 +36,7 @@ const { TurborelError } = require('turborel');
 ```
 
 Today the package exports its error type, `TurborelError`, and the
-types its exact numbers are read as, `Decimal` and `DecFloat`; it does
-not connect to a server yet.
+values and data types its codec reads and writes, among them `Decimal`,
+`DecFloat`, `Datetime`, `Json` and `Uuid`
+([Values](../client/23-values.md)); it does not connect to a server
+yet.
