@@ -314,6 +314,9 @@ function readMultiset(r: Reader): Multiset {
 const READERS: Readonly<Partial<Record<number, (r: Reader) => Value>>> = {
   [tag.NULL]: () => null,
   [tag.CHARACTER]: (r) => r.string(),
+  // Tags 5, 7, 10 and 12, of the types beside 1, 6, 9 and 11, are read as
+  // theirs, as turborel-protocol's reader takes them (RULES.md D8).
+  [tag.VARYING]: (r) => r.string(),
   [tag.EXACT]: readExact,
   [tag.APPROXIMATE]: (r) => {
     DOUBLE.setBigUint64(0, r.u64(), true);
@@ -321,9 +324,12 @@ const READERS: Readonly<Partial<Record<number, (r: Reader) => Value>>> = {
   },
   [tag.PLUGIN]: (r) => new PluginValue(r.string(), r.string(), r.bytesField()),
   [tag.BINARY]: (r) => r.bytesField(),
+  [tag.BINARY_VARYING]: (r) => r.bytesField(),
   [tag.DATE]: (r) => readDatetime(r, 'date'),
   [tag.TIME]: (r) => readDatetime(r, 'time'),
+  [tag.TIME_ZONED]: (r) => readDatetime(r, 'time'),
   [tag.TIMESTAMP]: (r) => readDatetime(r, 'timestamp'),
+  [tag.TIMESTAMP_ZONED]: (r) => readDatetime(r, 'timestamp'),
   [tag.INTERVAL]: (r) => new Interval(readQualifier(r), r.i128()),
   [tag.BOOLEAN]: (r) => r.flag(),
   [tag.DECFLOAT]: readDecFloat,

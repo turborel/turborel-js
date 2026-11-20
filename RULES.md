@@ -471,6 +471,10 @@ follows one rule, the same in all nine, listed here too:
   long, are refused before they are sent (-919, 08006), and the
   connection goes on. turborel-client sends them, and the server then
   fails the connection.
+- Value tags 5, 7, 10 and 12, the tags of CHARACTER VARYING, BINARY
+  VARYING and the zoned time and timestamp types, are read as value
+  tags 1, 6, 9 and 11, as turborel-protocol's reader takes them; the
+  driver writes only the latter.
 
 ### This driver's own
 

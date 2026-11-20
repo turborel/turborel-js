@@ -245,3 +245,18 @@ test('values of no tag are refused', () => {
     assert.throws(() => bytesOf(v as unknown as Value), isFailure(-910, 'TB910'));
   }
 });
+
+/** Verifies: [PROTOCOL Values] value tags 5, 7, 10 and 12 are read as tags 1, 6, 9 and 11, as turborel-protocol's reader takes them. */
+test('the tags of the types beside', () => {
+  const as = (tag: number, written: Value): Value => {
+    const bytes = bytesOf(written);
+    bytes[0] = tag;
+    return valueOf(bytes);
+  };
+  assert.equal(as(5, 'text'), 'text');
+  assert.deepEqual(as(7, Uint8Array.of(1, 2)), Uint8Array.of(1, 2));
+  const time = new Datetime({ moment: 'time', zoned: true, precision: 0, zone: 60, utc: 3_600_000_000n });
+  assert.deepEqual(as(10, time), time);
+  const stamp = new Datetime({ moment: 'timestamp', zoned: true, precision: 3, zone: 0, utc: 1n });
+  assert.deepEqual(as(12, stamp), stamp);
+});
