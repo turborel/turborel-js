@@ -1,0 +1,25 @@
+# Updates of the development dependencies (RULES.md D14) and of the actions
+# the workflows pin by digest. Each comes as a pull request that verify
+# checks like any other.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      lint:
+        patterns: ["eslint", "@eslint/*", "eslint-plugin-*", "typescript-eslint"]
+    ignore:
+      # typescript-eslint takes TypeScript below 6.1 (D9); a newer
+      # TypeScript waits until it takes that.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      # The types of the oldest Node.js supported (D3), so code that uses a
+      # newer API fails the type check.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

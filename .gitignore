@@ -1,0 +1,10 @@
+# Dependencies, and what the build, the tests and coverage write.
+node_modules/
+dist/
+build/
+coverage/
+*.tgz
+.idea/
+.vscode/
+.DS_Store
+.claude/

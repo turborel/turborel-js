@@ -1,0 +1,87 @@
+name: Bug
+description: The driver fails, crashes, hangs, leaks, or returns a wrong value.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Try the latest `main` first, and search the issues: add to one that matches.
+        A vulnerability is never reported here: see SECURITY.md.
+        A departure from the protocol spec or from turborel-client is a **Conformance** issue.
+        Put a severe impact first in the title: `[WRONG RESULT]`, `[CRASH]`, `[HANG]` or `[REGRESSION]`.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happens
+      description: The impact first, in a short paragraph. Then one sentence that sums it up.
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - Wrong value, or a value read or sent wrongly
+        - Crash, uncaught exception or unhandled rejection
+        - Hang, or a connection never released
+        - Memory or connections that grow without bound
+        - Wrong error, SQLCODE or SQLSTATE
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: |
+        The smallest program that shows it, with the SQL it runs from an empty database.
+        Say how it connects (TCP, TLS, Unix socket or named pipe) and with which settings, passwords left out.
+      render: javascript
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What should happen, and why. Cite the protocol's section if it says, e.g. `[PROTOCOL Frames]`, or turborel-client's behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happens instead. Give the error's SQLCODE, SQLSTATE and message, and its stack if there is one.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: regression
+    attributes:
+      label: Regression
+      description: If it worked before, give the last good commit and, if you ran `git bisect`, the first bad one.
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: "The driver's commit, `git rev-parse --short=12 HEAD`"
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server
+      description: "The server's version and commit, as `SERVER_VERSION` or `turboreld --version` tells it"
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and platform
+      description: The Node.js version (`node --version`), the operating system and version, and the architecture, e.g. "Node.js 24.11.0, Ubuntu 24.04, x86_64".
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: How often it happens, what you ruled out.

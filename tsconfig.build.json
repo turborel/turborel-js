@@ -1,0 +1,13 @@
+{
+  // The package: src/ compiled to dist/, as JavaScript with its .d.ts
+  // declarations beside it (RULES.md D9).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": false,
+    "declaration": true,
+    "newLine": "lf"
+  },
+  "include": ["src"]
+}

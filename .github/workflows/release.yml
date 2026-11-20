@@ -1,0 +1,53 @@
+# The package, built and checked by hand only (VERSIONING.md). It runs every
+# check, packs the package, installs the packed file into an empty project
+# and loads it by import and by require, and keeps the file as an artifact.
+# It publishes nothing: nothing goes to npm until every turborel driver is
+# done, and then the owner publishes.
+name: release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Install the development dependencies
+        run: npm ci
+      - name: Every check
+        run: npm run verify
+      - name: Coverage, against its floor
+        run: npm run coverage
+      - name: Pack
+        run: |
+          mkdir -p "$RUNNER_TEMP/package"
+          npm pack --pack-destination "$RUNNER_TEMP/package"
+      - name: Load the packed package by import and by require
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir consumer
+          cd consumer
+          npm init --yes > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP"/package/turborel-*.tgz
+          node --input-type=module -e "import { TurborelError } from 'turborel'; if (typeof TurborelError !== 'function') process.exit(1);"
+          node -e "const { TurborelError } = require('turborel'); if (typeof TurborelError !== 'function') process.exit(1);"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: turborel-js-package
+          path: ${{ runner.temp }}/package/turborel-*.tgz
+          if-no-files-found: error
+      # Disabled: the owner enables this step, and gives the job
+      # `id-token: write` for npm's trusted publishing, when every driver
+      # is done and the packages go up together.
+      - name: Publish to npm
+        if: ${{ false }}
+        run: npm publish --provenance --access public

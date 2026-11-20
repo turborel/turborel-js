@@ -1,0 +1,63 @@
+{
+  "name": "turborel",
+  "version": "0.0.0",
+  "description": "The JavaScript driver for turborel, a relational database system: its native protocol in TypeScript, for Node.js, with no runtime dependencies. Its version is the turborel release it is made for; the alpha, 0.0.0, speaks protocol version 1.",
+  "keywords": [
+    "turborel",
+    "database",
+    "sql",
+    "driver",
+    "client"
+  ],
+  "homepage": "https://github.com/turborel/turborel-js#readme",
+  "bugs": {
+    "url": "https://github.com/turborel/turborel-js/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/turborel/turborel-js.git"
+  },
+  "license": "BSD-2-Clause-Patent",
+  "author": "Turborel Inc.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "rm": "node -e \"const fs = process.getBuiltinModule('node:fs'); for (const d of process.argv.slice(1)) fs.rmSync(d, { recursive: true, force: true })\"",
+    "clean": "npm run rm -- build dist coverage",
+    "build": "npm run rm -- dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint --max-warnings 0 .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build:test": "npm run rm -- build && tsc -p tsconfig.test.json",
+    "test": "npm run build:test && node --test \"build/test/**/*.test.js\"",
+    "coverage": "npm run build:test && c8 node --test \"build/test/**/*.test.js\"",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm run build && npm run test",
+    "install-hooks": "git config core.hooksPath .githooks",
+    "prepack": "npm run clean && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "c8": "^12.0.0",
+    "eslint": "^10.15.0",
+    "eslint-plugin-jsdoc": "^65.5.0",
+    "eslint-plugin-tsdoc": "^0.5.4",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.73.0"
+  }
+}

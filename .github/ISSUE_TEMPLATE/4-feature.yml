@@ -1,0 +1,40 @@
+name: Feature
+description: Something the driver should do that it does not.
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check TODO.md and CONFORMANCE.md first: it may be planned already.
+        The driver's scope is turborel-client's features and the whole of protocol version 1, through Node.js's own API. Something the protocol lacks is proposed in turborel's repository first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you need to do, and why the driver cannot do it today, or not well.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Something turborel-client does that the driver does not
+        - The JavaScript API
+        - Connecting, TLS or authentication
+        - Settings, pools or pipelines
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: How it would work, and the API it would add, with an example of its use.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What else would solve the problem, and why this is better.

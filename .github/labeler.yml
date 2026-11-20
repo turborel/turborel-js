@@ -1,0 +1,67 @@
+area/codec:
+  - changed-files:
+      - any-glob-to-any-file: ["src/codec/**", "test/codec/**"]
+
+area/transport:
+  - changed-files:
+      - any-glob-to-any-file: ["src/transport/**", "test/transport/**"]
+
+area/auth:
+  - changed-files:
+      - any-glob-to-any-file: ["src/auth/**", "test/auth/**"]
+
+area/tls:
+  - changed-files:
+      - any-glob-to-any-file: ["src/tls/**", "test/tls/**"]
+
+area/session:
+  - changed-files:
+      - any-glob-to-any-file: ["src/session/**", "test/session/**"]
+
+area/statements:
+  - changed-files:
+      - any-glob-to-any-file: ["src/statements/**", "test/statements/**"]
+
+area/lobs:
+  - changed-files:
+      - any-glob-to-any-file: ["src/lobs/**", "test/lobs/**"]
+
+area/copy:
+  - changed-files:
+      - any-glob-to-any-file: ["src/copy/**", "test/copy/**"]
+
+area/settings:
+  - changed-files:
+      - any-glob-to-any-file: ["src/settings/**", "test/settings/**"]
+
+area/pipeline:
+  - changed-files:
+      - any-glob-to-any-file: ["src/pipeline/**", "test/pipeline/**"]
+
+area/pool:
+  - changed-files:
+      - any-glob-to-any-file: ["src/pool/**", "test/pool/**"]
+
+area/api:
+  - changed-files:
+      - any-glob-to-any-file: ["src/index.ts", "src/error.ts", "src/api/**", "test/error.test.ts", "test/api/**"]
+
+area/test:
+  - changed-files:
+      - any-glob-to-any-file: ["test/server/**", "test/support/**"]
+
+area/doc:
+  - changed-files:
+      - any-glob-to-any-file: ["doc/**", "README.md", "RULES.md", "CONFORMANCE.md", "TODO.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md", "TRADEMARK.md", "VERSIONING.md"]
+
+area/ci:
+  - changed-files:
+      - any-glob-to-any-file: [".github/**"]
+
+area/build:
+  - changed-files:
+      - any-glob-to-any-file: ["package.json", "package-lock.json", "tsconfig.json", "tsconfig.*.json", "eslint.config.js", ".prettierrc.json", ".prettierignore", ".c8rc.json", ".githooks/**", ".gitignore", ".gitattributes"]
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: ["package.json", "package-lock.json"]
