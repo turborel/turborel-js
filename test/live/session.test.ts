@@ -328,3 +328,62 @@ test('statuses in their order', async (t) => {
   assert.deepEqual(reset, login, 'every name again, in the same order');
   frames.destroy();
 });
+
+/**
+ * The kinds of the replies to `request`, up to the one of kind `ends`, or an Error.
+ *
+ * @param frames - the connection's frames
+ * @param request - the request
+ * @param ends - the kind of its last reply
+ * @returns each reply's kind, in order
+ */
+async function kindsOf(frames: FrameStream, request: Request, ends: Reply['kind']): Promise<Reply['kind'][]> {
+  await frames.write(encodeRequest(request), 5000);
+  const kinds: Reply['kind'][] = [];
+  for (;;) {
+    const frame = await frames.next(MAX_BODY, 5000);
+    const { kind } = decodeReply(frame.kind, frame.body);
+    kinds.push(kind);
+    if (kind === ends || kind === 'error') return kinds;
+  }
+}
+
+/** Verifies: [PROTOCOL Query 'Q'] a query that fails before its first batch is sent is answered by its Error alone, with no Description or Rows, and the driver gives no columns, the connection going on. */
+test('a query failing at its first batch has no columns', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  await conn.query('CREATE TABLE ODD (N INTEGER)');
+  await conn.query('INSERT INTO ODD VALUES (0)');
+  await conn.query('COMMIT');
+  const seen: string[] = [];
+  const sink = {
+    columns: (): void => {
+      seen.push('columns');
+    },
+    rows: (): void => {
+      seen.push('rows');
+    },
+  };
+  await assert.rejects(conn.queryInto('SELECT 1/N FROM ODD', sink), isFailure(-301, '22012'));
+  assert.deepEqual(seen, [], 'no columns, no rows');
+  await assert.rejects(conn.query('SELECT 1/N FROM ODD'), isFailure(-301, '22012'));
+  assert.equal(conn.isLost, false);
+  const { socket } = await open(tcp('127.0.0.1', PORT), 5000);
+  const frames = new FrameStream(socket);
+  const hello: Request = {
+    kind: 'hello',
+    version: 1,
+    user: 'ann',
+    mechanism: 'trust',
+    initial: new Uint8Array(0),
+    capabilities: [],
+    attributes: [],
+  };
+  assert.equal((await kindsOf(frames, hello, 'ready')).at(-1), 'ready');
+  const query: Request = { kind: 'query', sql: 'SELECT 1/N FROM ODD', ends: true, attributes: [], multi: false };
+  assert.deepEqual(await kindsOf(frames, query, 'complete'), ['error'], 'its Error alone');
+  frames.destroy();
+  await conn.query('DROP TABLE ODD RESTRICT');
+  await conn.query('COMMIT');
+  await conn.terminate();
+});
