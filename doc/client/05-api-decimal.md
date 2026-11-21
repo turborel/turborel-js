@@ -46,9 +46,14 @@ a `coefficient` of at most 34 digits times ten to its `exponent`, in its
 one form, with no trailing zeros and zero of exponent 0.
 
 `Decimal.parse` reads digits with an optional sign and point, keeping
-as many places as the text has. `DecFloat.of` and `DecFloat.parse` round
+as many places as the text has. Turborel's exact numbers hold up to 38
+digits: the driver sends any `Decimal` or `bigint` within 128 bits as it
+is, with no digit lost, and the server refuses one past 38 digits with
+22003. `DecFloat.of` and `DecFloat.parse` round
 half to even to 34 digits. `equals` compares by value: a `Decimal` of
-1.50 equals one of 1.5. `toString` and `toJSON` give every digit.
+1.50 equals one of 1.5. `toString` and `toJSON` give every digit, a
+scale past 38, more than any type has, as the units and `E-` the
+scale.
 `toNumber` gives the nearest `number`, which may lose digits, and only
 when asked.
 
@@ -56,7 +61,7 @@ when asked.
 
 | SQLSTATE | SQLCODE | When |
 |---|---|---|
-| 22003 | -301 | A `Decimal`'s units past 128 bits, or a `DecFloat` whose exponent of its leading digit is outside -6143 to 6144 |
+| 22003 | -301 | A `Decimal`'s units past 128 bits; at the server, an exact number past 38 digits; or a `DecFloat` whose exponent of its leading digit is outside -6143 to 6144 |
 | TB910 | -910 | A scale that is no 32-bit unsigned integer, an exponent that is no integer, or text that is no numeral |
 
 ## EXAMPLES

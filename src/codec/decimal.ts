@@ -18,7 +18,7 @@ const MAX_SCALE = 0xffff_ffff;
  * The largest scale written with its digits after a point; past it, the
  * power of ten is written out, as turborel's `Decimal` writes it.
  */
-const MAX_PLAIN_SCALE = 18;
+const MAX_PLAIN_SCALE = 38;
 
 /** The radix of a scale. */
 const TEN = 10n;
@@ -97,7 +97,7 @@ export class Decimal {
     return this.units * TEN ** BigInt(scale - this.scale) === other.units * TEN ** BigInt(scale - other.scale);
   }
 
-  /** @returns its digits exactly, as `-12.50`; past 18 places, as its units and `E-` its scale */
+  /** @returns its digits exactly, as `-12.50`; past 38 places, more than any type has, as its units and `E-` its scale */
   toString(): string {
     const sign = this.units < 0n ? '-' : '';
     const digits = (this.units < 0n ? -this.units : this.units).toString();

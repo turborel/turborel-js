@@ -400,3 +400,25 @@ test('a value cut to its parameter warns 01004', async (t) => {
   await conn.query('ROLLBACK');
   await conn.terminate();
 });
+
+/** Verifies: [CLIENT Running statements] an exact number of 38 digits, turborel's most, sent as a parameter and given as a result with every digit; one of 39 refused with 22003; a quotient of the scale turborel gives it, 1/3 being 0.333333. */
+test('exact numbers of 38 digits', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  await conn.query('CREATE TABLE WIDE (N NUMERIC(38,0), D DECIMAL(38,10))');
+  const most = 10n ** 38n - 1n;
+  const fraction = new Decimal(-(10n ** 38n - 1n), 10);
+  const insert = await conn.prepare('INSERT INTO WIDE VALUES (?, ?)');
+  await conn.execute(insert, [most, fraction]);
+  const [n, d] = rowsOf(await conn.query('SELECT N, D FROM WIDE'))[0] ?? [];
+  assert.equal(n, most);
+  assert.ok(d instanceof Decimal && d.equals(fraction));
+  assert.equal(String(d), '-9999999999999999999999999999.9999999999');
+  const echoed = await conn.prepare('VALUES CAST(? AS NUMERIC(38,0))');
+  assert.deepEqual(rowsOf(await conn.execute(echoed, [-most])), [[-most]]);
+  await assert.rejects(conn.execute(insert, [10n ** 38n, null]), isFailure(-301, '22003'), '39 digits');
+  const [[third]] = rowsOf(await conn.query('VALUES 1/3')) as [[Decimal]];
+  assert.equal(String(third), '0.333333');
+  await conn.query('ROLLBACK');
+  await conn.terminate();
+});

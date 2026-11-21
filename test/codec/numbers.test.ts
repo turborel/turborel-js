@@ -38,7 +38,8 @@ test('an exact number is its text', () => {
     const d = Decimal.parse(text);
     assert.deepEqual([d.units, d.scale, d.toString()], [units, scale, written], text);
   }
-  assert.equal(new Decimal(-123n, 19).toString(), '-123E-19', 'past 18 places, its power of ten');
+  assert.equal(new Decimal(-123n, 38).toString(), `-0.${'0'.repeat(35)}123`, '38 places, written out');
+  assert.equal(new Decimal(-123n, 39).toString(), '-123E-39', 'past 38 places, its power of ten');
   for (const text of ['', '.', 'abc', '1e5', '--1', '1.2.3']) {
     assert.throws(() => Decimal.parse(text), isFailure(-910, 'TB910'), text);
   }
