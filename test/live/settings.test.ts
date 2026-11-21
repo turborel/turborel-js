@@ -51,7 +51,7 @@ async function single(conn: Connection, sql: string): Promise<unknown> {
   return outcome.kind === 'rows' ? outcome.rows[0]?.[0] : undefined;
 }
 
-/** Verifies: [CLIENT Connecting by settings] a URI's settings connect: trust over a Unix socket, which no TLS secures; a password by SCRAM over TLS, bound; the program named as the attribute `application`, which the owner sees. */
+/** Verifies: [CLIENT Connecting by settings] a URI's settings connect: trust over a Unix socket, which no TLS secures; a password by SCRAM over TLS, bound; the program named as the attribute `application`, which the database's owner sees in CONNECTIONS. */
 test('connecting by a URI', async (t) => {
   const s = live(t);
   if (s === undefined) return;

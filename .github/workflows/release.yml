@@ -2,7 +2,7 @@
 # check, packs the package, installs the packed file into an empty project
 # and loads it by import and by require, and keeps the file as an artifact.
 # It publishes nothing: nothing goes to npm until every turborel driver is
-# done, and then the owner publishes.
+# done, and then the maintainers publish them together.
 name: release
 
 on:
@@ -45,7 +45,7 @@ jobs:
           name: turborel-js-package
           path: ${{ runner.temp }}/package/turborel-*.tgz
           if-no-files-found: error
-      # Disabled: the owner enables this step, and gives the job
+      # Disabled: a maintainer enables this step, and gives the job
       # `contents: write` for the tag and `id-token: write` for npm's
       # trusted publishing, when every driver is done and the packages go
       # up together (VERSIONING.md).
