@@ -142,10 +142,8 @@ A column's declared type, beside the type its tag says:
 import { Trust, columnType, connectTo, tcp, typeWritten } from 'turborel';
 
 const conn = await connectTo(tcp('127.0.0.1', 7422), 'ann', new Trust());
-await conn.query('CREATE TABLE PRICES (ID INTEGER, PRICE DECIMAL(9,2))');
-const typed = await conn.prepare('SELECT ID, PRICE FROM PRICES');
+const typed = await conn.prepare('VALUES (CAST(1 AS INTEGER), CAST(2.5 AS DECIMAL(9,2)))');
 for (const c of typed.columns) console.log(columnType(c), typeWritten(c.type), c.declared?.name);
-await conn.query('ROLLBACK');
 await conn.terminate();
 // INTEGER NUMERIC(10,0) INTEGER
 // DECIMAL(9,2) NUMERIC(9,2) DECIMAL

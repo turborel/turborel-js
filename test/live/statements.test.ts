@@ -332,6 +332,12 @@ test('declared types', async (t) => {
   assert.ok(queried.kind === 'rows');
   assert.deepEqual(told(queried.columns), DECLARED);
   assert.deepEqual(queried.rows[0]?.slice(0, 2), [1n, 2n], 'values by their own tags');
+  const kept = await conn.prepare('VALUES (CAST(1 AS INTEGER), CAST(2.5 AS DECIMAL(9,2)))');
+  assert.deepEqual(told(kept.columns), [DECLARED[0], DECLARED[3]], 'a VALUES of CASTs');
+  const union = await conn.prepare('SELECT I FROM DECLARED UNION SELECT I FROM DECLARED');
+  assert.deepEqual(told(union.columns), [DECLARED[0]], 'a UNION of one type');
+  const mixed = await conn.prepare('SELECT I FROM DECLARED UNION SELECT S FROM DECLARED');
+  assert.deepEqual(mixed.columns.map(columnTypeName), ['NUMERIC'], 'INTEGER with SMALLINT');
   await conn.query('COMMIT');
   const plain = await ann(new Offer(ALL_CAPABILITIES.filter((c) => c !== cap.DECLARED_TYPES && c !== cap.COMPRESSION)));
   const untold = await plain.query('SELECT I, R, M FROM DECLARED');
@@ -374,7 +380,7 @@ test('an INSERT of several rows of large objects', async (t) => {
   await conn.terminate();
 });
 
-/** Verifies: [CLIENT Prepared statements] a `?`'s value cut to its type completes with the warning 01004, and the connection tells it. */
+/** Verifies: [CLIENT Prepared statements] a `?`'s value cut to its type completes with the warning 01004, and the connection tells it: an INSERT's value, and a comparison's operand of a query with ORDER BY or without. */
 test('a value cut to its parameter warns 01004', async (t) => {
   if (live(t) === undefined) return;
   const conn = await ann();
@@ -385,6 +391,12 @@ test('a value cut to its parameter warns 01004', async (t) => {
   assert.equal(done.completion.sqlstate, '01004');
   assert.equal(conn.warning, '01004');
   assert.deepEqual(rowsOf(await conn.query('SELECT V FROM CUT')), [['abcde']]);
+  for (const order of ['', ' ORDER BY V']) {
+    const compared = await conn.prepare(`SELECT V FROM CUT WHERE V = CAST(? AS VARCHAR(5))${order}`);
+    const outcome = await conn.execute(compared, ['abcdefgh']);
+    assert.deepEqual(rowsOf(outcome), [['abcde']], order);
+    assert.equal(conn.warning, '01004', `a comparison${order}`);
+  }
   await conn.query('ROLLBACK');
   await conn.terminate();
 });
