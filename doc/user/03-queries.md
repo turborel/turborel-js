@@ -109,8 +109,10 @@ After each statement the connection keeps what its completion told:
   the rows a query returned, once all were read;
 - `lastGenerated`: the identity values an INSERT generated, in the order
   of its rows, as SQL writes them;
-- `serverTime`: the server's time for it in microseconds, `total`, with
-  the time it waited for a worker, `queued`, and for locks, `locks`;
+- `serverTime`: the server's time for it in microseconds: `total`, from
+  when a worker began it; `queued`, how long it waited for a worker
+  before that, no part of `total`; and `locks`, the part of `total` it
+  waited for locks;
 - `commitPosition`: the log position of the last commit, which a
   replica's session can wait for;
 - `warning`: the SQLSTATE of the warning it completed with, if it did;

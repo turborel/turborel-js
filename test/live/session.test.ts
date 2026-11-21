@@ -51,7 +51,7 @@ function without(...left: string[]): Offer {
   return new Offer(Offer.default().capabilities.filter((c) => !left.includes(c)));
 }
 
-/** Verifies: [CLIENT What the server tells] the rows a statement changed or a query returned; the identity values an INSERT generated; the server's time; the last commit's position. */
+/** Verifies: [CLIENT What the server tells] the rows a statement changed or a query returned; the identity values an INSERT generated; the server's time, its locks part of its total; the last commit's position. */
 test('what the server tells of a statement', async (t) => {
   if (live(t) === undefined) return;
   const conn = await ann();
@@ -59,7 +59,8 @@ test('what the server tells of a statement', async (t) => {
   await conn.query('INSERT INTO G (V) VALUES (5), (6), (7)');
   assert.deepEqual([conn.rowsAffected, conn.lastGenerated], [3n, ['1', '2', '3']]);
   const time = conn.serverTime;
-  assert.ok(time !== undefined && time.total >= time.queued && time.total >= time.locks);
+  // Queued is the wait for a worker before total began, no part of it.
+  assert.ok(time !== undefined && time.total >= time.locks);
   const none = conn.commitPosition;
   assert.equal(none, undefined, 'no commit yet');
   await conn.query('COMMIT');
