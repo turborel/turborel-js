@@ -601,6 +601,11 @@ own account, and each under a license that lets it be used so.
 TSDoc's own linter, made by the project that defines the syntax, and runs
 only in the lint.
 
+`overrides` in `package.json` raises two packages these pull in past a
+security advisory their own ranges still allow: `minimatch` to 11.0.1 or
+later and `glob` to 14.0.2 or later. Each override goes once every
+package that pulls it in asks for a fixed release itself.
+
 #### D17. Each value of the protocol is a JavaScript type that holds it exactly, or a class of the driver's own
 
 The codec (`src/codec/value-codec.ts`) gives each of the protocol's
