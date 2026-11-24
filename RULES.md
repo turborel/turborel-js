@@ -765,7 +765,7 @@ written as a reader runs them, one after another, from an empty schema.
 `[PROTOCOL Sample frames]` keeps a file of sample frames beside the
 page, `doc/client/05-protocol-frames.tsv`. The driver's tests read a
 copy of it, `test/fixtures/05-protocol-frames.tsv`, taken unchanged at
-Turborel's main at 045e42a9, which its first line, a comment, names
+Turborel's main at 1afa44c2, which its first line, a comment, names
 (`test/codec/frames.test.ts`). Every server frame is decoded and told in
 words as its meaning says it (`test/codec/frames-table.ts`), every
 client frame encoded byte for byte, and each compressed frame inflated

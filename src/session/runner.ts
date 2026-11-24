@@ -159,7 +159,7 @@ export class Runner extends Link {
   /** @returns the statement the server's Prepared describes */
   async #prepared(): Promise<Statement> {
     const reply = await this.receive();
-    if (reply.kind === 'prepared') return new Statement(reply.statement, reply.parameters, reply.columns);
+    if (reply.kind === 'prepared') return new Statement(reply.statement, reply.parameters, reply.columns, reply.called);
     throw this.unexpected(reply, 'the server sent no Prepared');
   }
 

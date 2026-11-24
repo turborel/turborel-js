@@ -40,6 +40,7 @@ export {
 export type { LobKind, Moment, Value } from './codec/values.js';
 export { Json, JsonObject } from './codec/json.js';
 export type { Column, Declared, Parameter } from './codec/composite.js';
+export type { Called, DynamicParameter, ParameterMode } from './codec/called.js';
 export { columnType, columnTypeName, typeName, typeWritten } from './codec/declared.js';
 export type { JsonInput, JsonItem } from './codec/json.js';
 export type {

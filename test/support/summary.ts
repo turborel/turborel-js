@@ -3,6 +3,7 @@
  * what a reply decodes to as the sample frames' meanings do.
  */
 
+import type { Called } from '../../src/codec/called.js';
 import type { Column, Parameter } from '../../src/codec/composite.js';
 import { typeWritten } from '../../src/codec/declared.js';
 import type { Completion, Reply } from '../../src/codec/replies.js';
@@ -38,6 +39,18 @@ function column(c: Column): string {
  */
 function parameter(p: Parameter): string {
   return `${typeWritten(p.type)}${p.varying ? ' varying' : ''}`;
+}
+
+/**
+ * What a Prepared of a CALL tells: its procedure, and each `?`'s mode, position and type.
+ *
+ * @param c - what it tells, if anything
+ * @returns it, in words, or the empty string if nothing
+ */
+function called(c: Called | undefined): string {
+  if (c === undefined) return '';
+  const each = c.parameters.map((p) => `${p.mode} ${String(p.ordinal)} ${parameter(p)}`);
+  return ` called ${c.procedure.schema}.${c.procedure.name} [${each.join('; ')}]`;
 }
 
 /**
@@ -97,7 +110,7 @@ export function summary(reply: Reply): string {
     case 'ready':
       return `ready ${reply.authorization} key=${hex(reply.key)} capabilities=${reply.capabilities.join(',')} server=${reply.server}`;
     case 'prepared':
-      return `prepared ${String(reply.statement)} parameters=[${reply.parameters.map(parameter).join('; ')}] columns=[${reply.columns.map(column).join('; ')}]`;
+      return `prepared ${String(reply.statement)} parameters=[${reply.parameters.map(parameter).join('; ')}] columns=[${reply.columns.map(column).join('; ')}]${called(reply.called)}`;
     case 'description':
       return `description [${reply.columns.map(column).join('; ')}]`;
     case 'rows':

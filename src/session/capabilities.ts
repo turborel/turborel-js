@@ -45,6 +45,8 @@ export const FETCH_ENDS = 'fetch-ends';
 export const CONDITIONS = 'conditions';
 /** A Prepared and a Description carry each column's declared type, tag 19. */
 export const DECLARED_TYPES = 'declared-types';
+/** A Prepared of a CALL carries its procedure and each `?` with its parameter's mode, tag 20. */
+export const PARAMETER_MODES = 'parameter-modes';
 
 /** Every capability of version 1, in the order Ready grants them. */
 export const ALL_CAPABILITIES: readonly string[] = [
@@ -67,6 +69,7 @@ export const ALL_CAPABILITIES: readonly string[] = [
   FETCH_ENDS,
   CONDITIONS,
   DECLARED_TYPES,
+  PARAMETER_MODES,
 ];
 
 /** The session's authorization identifier, a status the server tells. */

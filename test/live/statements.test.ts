@@ -300,6 +300,58 @@ test('CALL output parameters', async (t) => {
   await conn.terminate();
 });
 
+/** Verifies: [PROTOCOL Parameter modes] [CLIENT Prepared statements] granted `parameter-modes`, as connecting asks, each `?` of a CALL has its parameter's mode and ordinal position, two of one IN argument each the same, another statement's each IN of no position; not granted, the inputs alone. */
+test('CALL parameter modes', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  await conn.query(
+    'CREATE PROCEDURE TWICE(IN A INTEGER, INOUT B INTEGER, OUT C INTEGER) LANGUAGE SQL CONTAINS SQL BEGIN SET C = A * 2; SET B = B + 1; END',
+  );
+  await conn.query('COMMIT');
+  const call = await conn.prepare('CALL TWICE(?, ?, ?)');
+  assert.ok(conn.granted.includes(cap.PARAMETER_MODES));
+  assert.deepEqual(
+    call.dynamicParameters.map((p) => [p.mode, p.ordinal, p.type.kind]),
+    [
+      ['in', 1, 'exact'],
+      ['inout', 2, 'exact'],
+      ['out', 3, 'exact'],
+    ],
+  );
+  assert.deepEqual(call.procedure?.schema, 'ANN');
+  const reordered = await conn.prepare('CALL TWICE(CAST(? AS INTEGER) + CAST(? AS INTEGER), ?, ?)');
+  assert.deepEqual(
+    reordered.dynamicParameters.map((p) => [p.mode, p.ordinal]),
+    [
+      ['in', 1],
+      ['in', 1],
+      ['inout', 2],
+      ['out', 3],
+    ],
+    'two ? of one IN argument',
+  );
+  assert.deepEqual(rowsOf(await conn.execute(reordered, [20n, 1n, 5n])), [[6n, 42n]]);
+  const query = await conn.prepare('VALUES CAST(? AS INTEGER)');
+  assert.deepEqual(
+    [query.procedure, query.dynamicParameters.map((p) => [p.mode, p.ordinal])],
+    [undefined, [['in', undefined]]],
+  );
+  const plain = await ann(
+    new Offer(ALL_CAPABILITIES.filter((c) => c !== cap.PARAMETER_MODES && c !== cap.COMPRESSION)),
+  );
+  const told = await plain.prepare('CALL TWICE(?, ?, ?)');
+  assert.deepEqual(
+    [told.procedure, told.dynamicParameters.map((p) => p.mode)],
+    [undefined, ['in', 'in']],
+    'not granted, the inputs alone',
+  );
+  await plain.terminate();
+  await conn.query('ROLLBACK');
+  await conn.query('DROP PROCEDURE TWICE RESTRICT');
+  await conn.query('COMMIT');
+  await conn.terminate();
+});
+
 /** The declared type of each column of DECLARED, its name and as SQL writes it; FLOAT(20) is held as FLOAT(24). */
 const DECLARED = [
   ['INTEGER', 'INTEGER'],

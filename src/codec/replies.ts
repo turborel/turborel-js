@@ -8,6 +8,7 @@
  */
 
 import { type Column, type Parameter, readDiagnostics, readFailure, readParameter, readRow } from './composite.js';
+import { type Called, readPreparedColumns } from './called.js';
 import { readColumns } from './declared.js';
 import { LOB_REPLY, REPLY } from './kinds.js';
 import { Reader } from './reader.js';
@@ -62,6 +63,7 @@ export type Reply =
       readonly statement: number;
       readonly parameters: readonly Parameter[];
       readonly columns: readonly Column[];
+      readonly called?: Called;
     }
   | { readonly kind: 'description'; readonly columns: readonly Column[] }
   | { readonly kind: 'rows'; readonly rows: readonly (readonly Value[])[] }
@@ -170,7 +172,7 @@ const READERS: Readonly<Partial<Record<number, (r: Reader) => Reply>>> = {
     kind: 'prepared',
     statement: r.u32(),
     parameters: r.list(readParameter),
-    columns: readColumns(r),
+    ...readPreparedColumns(r),
   }),
   [REPLY.DESCRIPTION]: (r) => ({ kind: 'description', columns: readColumns(r) }),
   [REPLY.ROWS]: (r) => ({ kind: 'rows', rows: r.list(readRow) }),

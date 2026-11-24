@@ -31,10 +31,17 @@ function columnType(column: Column): string;
 function columnTypeName(column: Column): string;
 function typeWritten(type: DataType): string;
 
+interface DynamicParameter extends Parameter {
+  mode: 'in' | 'inout' | 'out';
+  ordinal?: number;
+}
+
 class Statement {
   readonly number: number;
   readonly parameters: readonly Parameter[];
   readonly columns: readonly Column[];
+  readonly dynamicParameters: readonly DynamicParameter[];
+  readonly procedure: { schema: string; name: string } | undefined;
 }
 
 class Connection {
@@ -81,6 +88,16 @@ by `close`. Under autocommit, the server granting `fetch-ends`, the
 cursor's transaction ends as the cursor does. A cursor numbered other
 than 0 needs `cursors`; `describe` and `describeCursor` need `describe`.
 `deallocate` lets a statement go.
+
+A statement's `parameters` are the ones `execute` takes values for, of a
+CALL not those of OUT parameters. `dynamicParameters` gives every `?` in
+the order written, OUT ones too: its type and, of a CALL, the mode, IN,
+INOUT or OUT, and the ordinal position of the procedure's parameter
+whose argument holds it, several `?` of one IN argument each the same;
+`procedure` gives the procedure's specific name. The server tells them
+to a connection granted `parameter-modes`, which a connection asks for
+by default. A `?` of another statement, or of any statement on a
+connection not granted it, is `in`, of no position.
 
 A `Column`, of a statement's `columns` or of a query's outcome, has its
 name, its `type` and whether it is NOT NULL. A type's tag can stand for

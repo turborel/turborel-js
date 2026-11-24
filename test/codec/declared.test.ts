@@ -43,10 +43,10 @@ function roundTrip(columns: readonly Column[]): { bytes: Uint8Array; read: Colum
   return { bytes, read };
 }
 
-/** Verifies: [PROTOCOL Capabilities] `declared-types` is a capability, the last of version 1's, asked for by default as turborel-client's `connect` asks. */
+/** Verifies: [PROTOCOL Capabilities] `declared-types` is a capability, the nineteenth of version 1's, asked for by default as turborel-client's `connect` asks. */
 test('declared-types is asked for', () => {
   assert.equal(DECLARED_TYPES, 'declared-types');
-  assert.equal(ALL_CAPABILITIES.at(-1), DECLARED_TYPES);
+  assert.equal(ALL_CAPABILITIES.at(-2), DECLARED_TYPES);
   assert.ok(Offer.default().capabilities.includes(DECLARED_TYPES));
 });
 

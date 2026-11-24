@@ -32,7 +32,7 @@ interface Sample {
 const FILE = join(import.meta.dirname, '..', '..', '..', 'test', 'fixtures', '05-protocol-frames.tsv');
 
 /** How many samples the file holds at its pinned commit. */
-const SAMPLES = 147;
+const SAMPLES = 148;
 
 /**
  * The file's samples, each line checked as the page lays it out.

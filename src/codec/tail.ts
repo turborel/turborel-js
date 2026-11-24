@@ -35,6 +35,8 @@ export const CONDITIONS = 17;
 export const TIME = 18;
 /** Tag 19: declared, the columns' declared types, of Prepared and Description. */
 export const DECLARED = 19;
+/** Tag 20: called, a CALL's procedure and each `?`'s mode and position, of Prepared. */
+export const CALLED = 20;
 
 /** The most attributes a message takes. */
 export const MAX_ATTRIBUTES = 32;

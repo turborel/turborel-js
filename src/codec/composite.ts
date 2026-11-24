@@ -125,6 +125,16 @@ export function readParameter(r: Reader): Parameter {
 }
 
 /**
+ * Writes a parameter: its varying flag, then its type.
+ *
+ * @param w - the writer
+ * @param p - the parameter
+ */
+export function writeParameter(w: Writer, p: Parameter): void {
+  writeType(w.flag(p.varying), p.type);
+}
+
+/**
  * Writes the diagnostics: each field said, with its tag.
  *
  * @param w - the writer

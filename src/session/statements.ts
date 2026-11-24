@@ -12,6 +12,8 @@ import type { Column, Parameter } from '../codec/composite.js';
 import type { Completion } from '../codec/replies.js';
 import type { Value } from '../codec/values.js';
 import type { TurborelError } from '../error.js';
+import { type Called, type DynamicParameter, dynamicParameters } from '../codec/called.js';
+import type { TypeName } from '../codec/types.js';
 
 /** What a statement gave: a query's columns and rows, or another statement's completion. */
 export type Outcome =
@@ -80,6 +82,15 @@ export class Statement {
   readonly parameters: readonly Parameter[];
   /** The columns of its rows, of a query; of a CALL, one for each `?` of an output parameter, whose values `execute` gives as a row; none of another statement. */
   readonly columns: readonly Column[];
+  /**
+   * Each of its `?`s in the order written, OUT ones too: its type, and, of
+   * a CALL, the mode and ordinal position of the parameter whose argument
+   * holds it, as a server granting `parameter-modes` tells them; told
+   * none, each input an IN one, of no position.
+   */
+  readonly dynamicParameters: readonly DynamicParameter[];
+  /** Of a CALL of an SQL-invoked procedure, the procedure's specific name, as a server granting `parameter-modes` tells it. */
+  readonly procedure: TypeName | undefined;
 
   /**
    * A statement as Prepared describes it.
@@ -87,10 +98,13 @@ export class Statement {
    * @param number - its number
    * @param parameters - its parameters
    * @param columns - its columns
+   * @param called - what it told of a CALL, if it did
    */
-  constructor(number: number, parameters: readonly Parameter[], columns: readonly Column[]) {
+  constructor(number: number, parameters: readonly Parameter[], columns: readonly Column[], called?: Called) {
     this.number = number;
     this.parameters = parameters;
     this.columns = columns;
+    this.dynamicParameters = dynamicParameters(parameters, called);
+    this.procedure = called?.procedure;
   }
 }

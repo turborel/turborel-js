@@ -14,6 +14,8 @@ class PreparedStatement {
   readonly statement: Statement;
   readonly columns: readonly ResultColumn[];
   readonly parameterCount: number;
+  readonly parameters: readonly DynamicParameter[];
+  readonly procedure: { schema: string; name: string } | undefined;
   execute(params?: readonly Value[], options?: { signal?: AbortSignal }): Promise<Result>;
   cursor(params?: readonly Value[], options?: { batch?: number; signal?: AbortSignal }): Promise<Cursor>;
   close(): Promise<void>;
@@ -24,8 +26,12 @@ class PreparedStatement {
 ## DESCRIPTION
 
 `prepare` prepares a statement whose parameters are written `?`.
-`parameterCount` gives how many it takes, and `columns` a query's
-columns, or a CALL's output parameters'. `execute` runs it with a value
+`parameterCount` gives how many values it takes, and `columns` a query's
+columns, or a CALL's output parameters'. `parameters` gives every `?`
+in the order written, OUT ones too, each with its `type`, its `mode`,
+`in`, `inout` or `out`, and of a CALL its parameter's `ordinal`
+position, as the server granting `parameter-modes` tells them;
+`procedure` gives a CALL's procedure. `execute` runs it with a value
 for each, giving a `Result` as `query` does: a query's rows, a CALL's
 output parameters as one row, or another statement's completion. It
 stays valid across transactions. `cursor` opens a cursor of it, a

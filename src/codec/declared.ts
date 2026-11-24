@@ -27,7 +27,18 @@ import type { Writer } from './writer.js';
 export function readColumns(r: Reader): Column[] {
   const columns = r.list(readColumn);
   const tail = new Tail([DECLARED]);
-  if (tail.next(r) === undefined) return columns;
+  return tail.next(r) === undefined ? columns : readDeclared(r, columns);
+}
+
+/**
+ * Reads tail 19's field, the declared types of `columns`, its tag read.
+ *
+ * @param r - the reader
+ * @param columns - the columns, as read
+ * @returns them, each with its declared type
+ * @throws {@link TurborelError} 08006 if the declared types are not one for each column
+ */
+export function readDeclared(r: Reader, columns: readonly Column[]): Column[] {
   const declared = r.list((inner): Declared => ({ name: inner.string(), written: inner.string() }));
   if (declared.length !== columns.length) throw r.corrupt('its declared types are not one for each column');
   return columns.map((c, i) => {

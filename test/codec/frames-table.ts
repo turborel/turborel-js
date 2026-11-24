@@ -56,6 +56,8 @@ export const SERVER: Readonly<Record<string, string>> = {
   'prepared-empty': 'prepared 2 parameters=[] columns=[]',
   'prepared-declared':
     'prepared 1 parameters=[CHARACTER VARYING(32767) varying; NUMERIC(10,0)] columns=[K NUMERIC(10,0) NOT NULL declared INTEGER as INTEGER]',
+  'prepared-called':
+    'prepared 3 parameters=[NUMERIC(10,0)] columns=[G NUMERIC(10,0) NOT NULL] called S.P [in 1 NUMERIC(10,0); out 2 NUMERIC(10,0)]',
   description: 'description [K NUMERIC(10,0) NOT NULL; (unnamed) CHARACTER VARYING(5)]',
   'description-empty': 'description []',
   'description-declared':

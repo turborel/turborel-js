@@ -15,6 +15,8 @@ import type { Readable } from 'node:stream';
 
 import { Cursor, type CursorReadOptions } from './cursor.js';
 import { type ResultColumn, resultColumns } from './columns.js';
+import type { DynamicParameter } from '../codec/called.js';
+import type { TypeName } from '../codec/types.js';
 import type { Completion } from '../codec/replies.js';
 import type { Lob, LobKind, LobLocator, Value } from '../codec/values.js';
 import { TurborelError, apiMisuse } from '../error.js';
@@ -317,7 +319,20 @@ export class PreparedStatement {
     return resultColumns(this.statement.columns);
   }
 
-  /** @returns how many parameters it takes */
+  /**
+   * @returns each of its `?`s in the order written, OUT ones too: its type, and, of a CALL, the mode, IN, INOUT or
+   * OUT, and the ordinal position of the procedure's parameter whose argument holds it; of another statement, each IN
+   */
+  get parameters(): readonly DynamicParameter[] {
+    return this.statement.dynamicParameters;
+  }
+
+  /** @returns of a CALL of an SQL-invoked procedure, the procedure's specific name */
+  get procedure(): TypeName | undefined {
+    return this.statement.procedure;
+  }
+
+  /** @returns how many values `execute` takes: one for each `?` but those of a CALL's OUT parameters */
   get parameterCount(): number {
     return this.statement.parameters.length;
   }

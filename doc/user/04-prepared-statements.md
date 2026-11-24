@@ -48,7 +48,13 @@ string longer than its column's, completes with the warning 01004.
 A CALL's parameters are its inputs alone. Its columns are one for each
 `?` of an OUT or INOUT parameter, in the procedure's parameter order, so
 an INOUT `?` is both; `execute` gives their values once the procedure
-ran, as one row.
+ran, as one row. `dynamicParameters` gives every `?` in the order
+written, OUT ones too, each with the mode, `in`, `inout` or `out`, and
+the ordinal position of the procedure's parameter whose argument holds
+it, and `procedure` the procedure's specific name, its schema and the name
+the server gave it, as the server tells them to a
+connection granted `parameter-modes`, which it asks for by default. A
+`?` of another statement is `in`, of no position.
 
 ```js
 import { Trust, connectTo, tcp } from 'turborel';
@@ -59,10 +65,12 @@ await conn.query(
 );
 const call = await conn.prepare('CALL TWICE(?, ?)');
 console.log(call.parameters.length, call.columns.map((c) => c.name));
+console.log(call.dynamicParameters.map((p) => `${p.mode} ${p.ordinal}`), call.procedure?.schema);
 console.log((await conn.execute(call, [21n])).rows);
 await conn.query('ROLLBACK');
 await conn.terminate();
 // 1 [ 'C' ]
+// [ 'in 1', 'out 2' ] ANN
 // [ [ 42n ] ]
 ```
 

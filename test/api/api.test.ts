@@ -12,6 +12,7 @@ import { Trust } from '../../src/auth/mechanism.js';
 import type { Column } from '../../src/codec/composite.js';
 import { REQUEST } from '../../src/codec/kinds.js';
 import { Reader } from '../../src/codec/reader.js';
+import { type Called, writeCalled } from '../../src/codec/called.js';
 import { writeColumns } from '../../src/codec/declared.js';
 import { readValues } from '../../src/codec/value-codec.js';
 import { writeType } from '../../src/codec/types.js';
@@ -29,6 +30,14 @@ after(async () => {
 const ID: Column = { name: 'ID', type: { kind: 'varying', length: 10, units: 'characters' }, notNull: false };
 /** The one column every prepared query of the server gives, of a distinct type it declares. */
 const CODE: Column = { ...ID, name: 'CODE', declared: { name: 'USER-DEFINED', written: 'S.CODE' } };
+/** What the server tells of every CALL: an IN `?` of parameter 1 and an OUT one of parameter 2. */
+const CALLED: Called = {
+  procedure: { schema: 'S', name: 'P' },
+  parameters: [
+    { mode: 'in', ordinal: 1, varying: false, type: ID.type },
+    { mode: 'out', ordinal: 2, varying: false, type: ID.type },
+  ],
+};
 /** The rows a cursor of the server reads. */
 const ROWS = ['a', 'b', 'c', 'd', 'e'];
 
@@ -60,6 +69,7 @@ async function answer(peer: Peer): Promise<void> {
         w.u32(number).u32(1);
         writeType(w.flag(false), ID.type);
         writeColumns(w, query ? [CODE] : []);
+        if (sql.startsWith('CALL')) writeCalled(w, CALLED);
       });
     } else if (frame.kind === REQUEST.EXECUTE) {
       const number = r.u32();
@@ -126,6 +136,26 @@ test('columns tell their types', async () => {
   const cursor = await s.cursor([], { batch: 2 });
   assert.equal(cursor.columns[0]?.typeWritten, 'S.CODE');
   await cursor.close();
+  await c.close();
+});
+
+/** Verifies: [CLIENT Prepared statements] a prepared statement's parameters, each `?` with its mode and ordinal position, of a CALL as the server told them, of another statement each IN; the procedure a CALL invokes. */
+test('a prepared CALL tells the modes of its parameters', async () => {
+  const c = await client();
+  const call = await c.prepare('CALL P(?, ?)');
+  assert.deepEqual(
+    call.parameters.map((p) => [p.mode, p.ordinal]),
+    [
+      ['in', 1],
+      ['out', 2],
+    ],
+  );
+  assert.deepEqual([call.procedure, call.parameterCount], [{ schema: 'S', name: 'P' }, 1]);
+  const query = await c.prepare('SELECT CODE FROM T WHERE ID = ?');
+  assert.deepEqual(
+    [query.procedure, query.parameters.map((p) => [p.mode, p.ordinal])],
+    [undefined, [['in', undefined]]],
+  );
   await c.close();
 });
 
