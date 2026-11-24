@@ -73,4 +73,4 @@ A request the target's state does not allow, as resuming a target not
 paused, fails with SQLSTATE TBD01, a breakpoint in a routine its user
 may not debug with 42000, and an ID of no connection it may see with
 08003; the debugger's session goes on after each
-([The Routine Debugger](../client/31-debugger.md)).
+([The Routine Debugger](../client/31-debugging.md)).
