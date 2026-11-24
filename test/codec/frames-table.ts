@@ -5,6 +5,7 @@
  */
 
 import type { Attribute } from '../../src/codec/tail.js';
+import type { DebugRequest } from '../../src/codec/debug.js';
 import type { Request } from '../../src/codec/requests.js';
 
 /** UTF-8 octets of `s`. */
@@ -45,6 +46,16 @@ function hello(
  */
 function query(sql: string, ends: boolean, attributes: readonly Attribute[] = [], multi = false): Request {
   return { kind: 'query', sql, ends, attributes, multi };
+}
+
+/**
+ * A Debug request.
+ *
+ * @param q - what it asks
+ * @returns the request
+ */
+function debug(q: DebugRequest): Request {
+  return { kind: 'debug', debug: q };
 }
 
 /** Each server frame's reply, by its name, as its meaning says. */
@@ -165,6 +176,17 @@ export const SERVER: Readonly<Record<string, string>> = {
   'value-json-scalars': 'rows [JSON(\'[null,true,false,-2,1.50,"",{}]\')]',
   'value-xml': "rows [XMLPARSE(CONTENT '<a>&lt;</a>' PRESERVE WHITESPACE)]",
   'value-uuid': "rows [UUID '00112233-4455-6677-8899-aabbccddeeff']",
+  'debugged-connection': 'debugged connection 2',
+  'debugged-breakpoint': 'debugged breakpoint 1 ANN.RAISE_PAY line 4',
+  'debugged-breakpoints': 'debugged breakpoints [1 ANN.RAISE_PAY line 4]',
+  'debugged-running': 'debugged stack running',
+  'debugged-stack':
+    'debugged stack at breakpoint 1 frames [procedure ANN.RAISE_PAY (ANN.RAISE_PAY) at 1 line 4 column 3 parameters [PCT INTEGER 10] variables [N INTEGER NULL] cursors [C closed SELECT ID FROM STAFF]]',
+  'event-paused':
+    'event paused at breakpoint 1 frames [procedure ANN.RAISE_PAY (ANN.RAISE_PAY) at 1 line 4 column 3 parameters [PCT INTEGER 10] variables [N INTEGER NULL] cursors [C closed SELECT ID FROM STAFF]]',
+  'event-timed-out': 'event timedOut',
+  'event-cancelled': 'event cancelled',
+  'event-ended': 'event ended',
 };
 
 /** Each client frame's request, by its name, as its meaning says. */
@@ -224,4 +246,19 @@ export const CLIENT: Readonly<Record<string, Request>> = {
   'copy-end': { kind: 'copyEnd', abandon: false },
   'copy-end-abandon': { kind: 'copyEnd', abandon: true },
   'query-compressed': query(`SELECT '${'x'.repeat(2000)}' FROM T`, true),
+  'debug-identify': debug({ what: 'identify' }),
+  'debug-attach': debug({ what: 'attach', connection: 2n }),
+  'debug-detach': debug({ what: 'detach' }),
+  'debug-break': debug({
+    what: 'break',
+    kind: 'procedure',
+    routine: { schema: 'ANN', name: 'RAISE_PAY' },
+    line: 4,
+    condition: 'PCT > 5',
+  }),
+  'debug-clear': debug({ what: 'clear', number: 1 }),
+  'debug-breakpoints': debug({ what: 'breakpoints' }),
+  'debug-resume': debug({ what: 'resume', action: 'over' }),
+  'debug-interrupt': debug({ what: 'interrupt' }),
+  'debug-stack': debug({ what: 'stack' }),
 };

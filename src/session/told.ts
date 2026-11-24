@@ -16,6 +16,7 @@ import { DEFAULT_THRESHOLD } from '../codec/compress.js';
 import type { Completion } from '../codec/replies.js';
 import type { Attribute } from '../codec/tail.js';
 import type { Diagnostics } from '../error.js';
+import type { DebugEvent } from '../codec/debug.js';
 
 /** The connection attribute that names the program, which the server shows in INFORMATION_SCHEMA.CONNECTIONS. */
 export const APPLICATION = 'application';
@@ -118,6 +119,8 @@ export class Told {
   completed: Completion | undefined;
   /** The query attributes each Query and Execute carries, as the program set them. */
   attributes: readonly Attribute[] = [];
+  /** The events of the session this connection debugs that came and were not yet read, an extension. */
+  readonly events: DebugEvent[] = [];
 
   /**
    * Takes a notice: to the handler, or kept.

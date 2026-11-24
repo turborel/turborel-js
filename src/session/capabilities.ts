@@ -47,6 +47,8 @@ export const CONDITIONS = 'conditions';
 export const DECLARED_TYPES = 'declared-types';
 /** A Prepared of a CALL carries its procedure and each `?` with its parameter's mode, tag 20. */
 export const PARAMETER_MODES = 'parameter-modes';
+/** The request Debug, answered by Debugged or a Complete, and the Event the server sends unasked, an extension. */
+export const DEBUGGER = 'debugger';
 
 /** Every capability of version 1, in the order Ready grants them. */
 export const ALL_CAPABILITIES: readonly string[] = [
@@ -70,6 +72,7 @@ export const ALL_CAPABILITIES: readonly string[] = [
   CONDITIONS,
   DECLARED_TYPES,
   PARAMETER_MODES,
+  DEBUGGER,
 ];
 
 /** The session's authorization identifier, a status the server tells. */

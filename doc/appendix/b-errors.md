@@ -65,6 +65,7 @@ going on, its `active` saying whether its transaction is still active.
 |---|---|---|
 | 01T01 | none: a notice | Reset or ChangeUser rolled back the transaction that was active: a notice, of severity NOTICE |
 | TB920 | -920 | The statement was cancelled |
+| TBD01 | -910 | A debugger's request its target's state does not allow, as a resume of a target not paused; the session goes on *(extension)* |
 | TBR01 | -920 | A replica had not applied the position of REPLICATION.READ_AFTER in time; the statement fails, the connection goes on |
 
 ## As turborel-client gives them

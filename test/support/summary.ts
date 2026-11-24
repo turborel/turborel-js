@@ -4,6 +4,7 @@
  */
 
 import type { Called } from '../../src/codec/called.js';
+import type { Breakpoint, DebugReply, Frame, Named, Paused } from '../../src/codec/debug.js';
 import type { Column, Parameter } from '../../src/codec/composite.js';
 import { typeWritten } from '../../src/codec/declared.js';
 import type { Completion, Reply } from '../../src/codec/replies.js';
@@ -51,6 +52,60 @@ function called(c: Called | undefined): string {
   if (c === undefined) return '';
   const each = c.parameters.map((p) => `${p.mode} ${String(p.ordinal)} ${parameter(p)}`);
   return ` called ${c.procedure.schema}.${c.procedure.name} [${each.join('; ')}]`;
+}
+
+/**
+ * A breakpoint: its number, routine, line and condition.
+ *
+ * @param b - the breakpoint
+ * @returns it, in words
+ */
+function breakpoint(b: Breakpoint): string {
+  const condition = b.condition === undefined ? '' : ` when ${b.condition}`;
+  return `${String(b.number)} ${b.routine.schema}.${b.routine.name} line ${String(b.line)}${condition}`;
+}
+
+/**
+ * A frame: its origin, whether visible, its place, its parameters, variables and cursors.
+ *
+ * @param f - the frame
+ * @returns it, in words
+ */
+function frame(f: Frame): string {
+  const origin =
+    f.origin === undefined
+      ? 'direct'
+      : `${f.origin.kind} ${f.origin.name.schema}.${f.origin.name.name} (${f.origin.shown.schema}.${f.origin.shown.name})`;
+  const at = f.at === undefined ? '' : ` at ${String(f.at)}`;
+  const line = f.line === undefined ? '' : ` line ${String(f.line)} column ${String(f.column)}`;
+  const named = (list: readonly Named[]): string =>
+    list.map((n) => `${n.name} ${n.dataType} ${literalOf(n.value)}`).join(', ');
+  const cursors = f.cursors.map((c) => `${c.name} ${c.open ? 'open' : 'closed'} ${c.query}`).join(', ');
+  return `${origin}${f.visible ? '' : ' hidden'}${at}${line} parameters [${named(f.parameters)}] variables [${named(f.variables)}] cursors [${cursors}]`;
+}
+
+/**
+ * A pause: its reason, and its frames.
+ *
+ * @param p - the pause
+ * @returns it, in words
+ */
+function paused(p: Paused): string {
+  const reason = p.reason === 'breakpoint' ? `at breakpoint ${String(p.breakpoint)}` : 'a step';
+  return `${reason} frames [${p.frames.map(frame).join('; ')}]`;
+}
+
+/**
+ * What a Debugged answers.
+ *
+ * @param d - the answer
+ * @returns it, in words
+ */
+function debugged(d: DebugReply): string {
+  if (d.what === 'connection') return `connection ${String(d.id)}`;
+  if (d.what === 'breakpoint') return `breakpoint ${breakpoint(d.breakpoint)}`;
+  if (d.what === 'breakpoints') return `breakpoints [${d.breakpoints.map(breakpoint).join('; ')}]`;
+  return d.paused === undefined ? 'stack running' : `stack ${paused(d.paused)}`;
 }
 
 /**
@@ -104,31 +159,26 @@ function completion(c: Completion): string {
  * @returns it, every field told
  */
 export function summary(reply: Reply): string {
-  switch (reply.kind) {
-    case 'challenge':
-      return `challenge ${Buffer.from(reply.challenge).toString('utf8')}`;
-    case 'ready':
-      return `ready ${reply.authorization} key=${hex(reply.key)} capabilities=${reply.capabilities.join(',')} server=${reply.server}`;
-    case 'prepared':
-      return `prepared ${String(reply.statement)} parameters=[${reply.parameters.map(parameter).join('; ')}] columns=[${reply.columns.map(column).join('; ')}]${called(reply.called)}`;
-    case 'description':
-      return `description [${reply.columns.map(column).join('; ')}]`;
-    case 'rows':
-      return `rows ${reply.rows.map((r) => `[${r.map(literalOf).join(', ')}]`).join(' ')}`.trimEnd();
-    case 'complete':
-      return `complete ${completion(reply.completion)}`;
-    case 'error':
-      return `error ${failure(reply.failure)}`;
-    case 'lobData':
-      return `lob data ${hex(reply.data)}`;
-    case 'lobLocator':
-      return `lob locator ${String(reply.locator)}`;
-    case 'notice':
-      return `notice ${reply.sqlstate} ${reply.message}${diagnostics(reply.diagnostics)}`;
-    case 'status':
-      return `status ${reply.name}=${reply.value}`;
-    case 'suspended':
-    case 'pong':
-      return reply.kind;
-  }
+  return (SUMMARIES[reply.kind] as (r: Reply) => string)(reply);
 }
+
+/** How each kind of reply is told in words. */
+const SUMMARIES: { readonly [K in Reply['kind']]: (r: Extract<Reply, { kind: K }>) => string } = {
+  challenge: (r) => `challenge ${Buffer.from(r.challenge).toString('utf8')}`,
+  ready: (r) =>
+    `ready ${r.authorization} key=${hex(r.key)} capabilities=${r.capabilities.join(',')} server=${r.server}`,
+  prepared: (r) =>
+    `prepared ${String(r.statement)} parameters=[${r.parameters.map(parameter).join('; ')}] columns=[${r.columns.map(column).join('; ')}]${called(r.called)}`,
+  description: (r) => `description [${r.columns.map(column).join('; ')}]`,
+  rows: (r) => `rows ${r.rows.map((row) => `[${row.map(literalOf).join(', ')}]`).join(' ')}`.trimEnd(),
+  complete: (r) => `complete ${completion(r.completion)}`,
+  error: (r) => `error ${failure(r.failure)}`,
+  lobData: (r) => `lob data ${hex(r.data)}`,
+  lobLocator: (r) => `lob locator ${String(r.locator)}`,
+  notice: (r) => `notice ${r.sqlstate} ${r.message}${diagnostics(r.diagnostics)}`,
+  status: (r) => `status ${r.name}=${r.value}`,
+  suspended: () => 'suspended',
+  pong: () => 'pong',
+  debugged: (r) => `debugged ${debugged(r.debugged)}`,
+  event: (r) => `event ${r.event.what}${r.event.what === 'paused' ? ` ${paused(r.event.paused)}` : ''}`,
+};

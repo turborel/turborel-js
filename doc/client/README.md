@@ -28,3 +28,4 @@ The same pages in every Turborel driver, one for each part of turborel-client.
 - [Pools](28-pools.md)
 - [The SQL-agent](29-sql-agent.md)
 - [Errors](30-errors.md)
+- [The Routine Debugger](31-debugger.md)

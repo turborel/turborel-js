@@ -75,6 +75,7 @@ export class FrameStream {
   private buffered = 0;
   private waiter: Waiter | undefined;
   private failure: TurborelError | undefined;
+  private readonly arrivals = new Set<() => void>();
 
   /** @param socket - a connected socket, plain or TLS */
   constructor(socket: Socket) {
@@ -83,6 +84,7 @@ export class FrameStream {
       this.chunks.push(chunk);
       this.buffered += chunk.byteLength;
       this.serve();
+      this.arrived();
     });
     socket.on('error', (e: Error) => {
       this.fail(connectionFailure(`the connection failed: ${e.message}`, e));
@@ -102,6 +104,18 @@ export class FrameStream {
     const waiter = this.waiter;
     this.waiter = undefined;
     waiter?.reject(this.failure);
+    this.arrived();
+  }
+
+  /** @returns the failure that lost the connection, if one did */
+  private lostBy(): TurborelError | undefined {
+    return this.failure;
+  }
+
+  /** Tells each wait for bytes that some came, or the connection failed. */
+  private arrived(): void {
+    for (const tell of this.arrivals) tell();
+    this.arrivals.clear();
   }
 
   /** Gives the waiting read its bytes once they are all here, and pauses the socket past the high water. */
@@ -165,6 +179,35 @@ export class FrameStream {
     const { kind, length } = decodeHeader(head, max);
     const body = length === 0 ? new Uint8Array(0) : await within(this.read(length), ms, 'receive', lose);
     return { kind, body };
+  }
+
+  /**
+   * Whether bytes arrive within `ms`, none taken: the connection kept if
+   * none do, as a debugger waits for its target's next event.
+   *
+   * @param ms - the milliseconds to wait, or undefined for no limit
+   * @returns true once some are buffered, false if none came in time
+   * @throws {@link TurborelError} 08006 if the connection is lost before any come
+   */
+  async arrives(ms: number | undefined): Promise<boolean> {
+    if (this.buffered > 0) return true;
+    if (this.failure !== undefined) throw this.failure;
+    let timer: NodeJS.Timeout | undefined;
+    let tell: (() => void) | undefined;
+    const came = await new Promise<boolean>((resolve) => {
+      tell = (): void => {
+        resolve(true);
+      };
+      this.arrivals.add(tell);
+      if (ms !== undefined) timer = setTimeout(resolve, ms, false);
+      this.socket.resume();
+    }).finally(() => {
+      clearTimeout(timer);
+      if (tell !== undefined) this.arrivals.delete(tell);
+    });
+    const lost = this.lostBy();
+    if (this.buffered === 0 && lost !== undefined) throw lost;
+    return came;
   }
 
   /**

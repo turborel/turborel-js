@@ -12,6 +12,7 @@ import type { Readable } from 'node:stream';
 
 import { Canceller } from './cancel.js';
 import { Copying } from './copy.js';
+import { Debugger } from './debugger.js';
 import { type ExportFormat, type ExportTarget, exportSink, nativeEnd } from './export.js';
 import type { OpenOptions } from './link.js';
 import { CHUNK_OCTETS, LobWriter, completed, heldRange, lobStream, octetsOf } from './lobs.js';
@@ -37,6 +38,8 @@ const DATA_EXCEPTION = '22000';
 
 /** A connection to a server: its session, the statements it runs there, and its large objects, copies and exports. */
 export class Connection extends Runner {
+  #debugger: Debugger | undefined;
+
   /**
    * Opens a connection over `stream` as `user`, proved by `mechanism`.
    *
@@ -56,6 +59,12 @@ export class Connection extends Runner {
     const connection = new Connection(stream, options);
     await connection.begin(user, mechanism, options.offer ?? Offer.default());
     return connection;
+  }
+
+  /** @returns this connection's routine debugger, which drives the routines another connection's session runs, once the server granted `debugger` *(extension)* */
+  get debugger(): Debugger {
+    this.#debugger ??= new Debugger(this, this.told.events);
+    return this.#debugger;
   }
 
   /** @returns what cancels the statement this connection runs, from elsewhere; none for a connection over a stream given to `open`, whose server it cannot reach again */

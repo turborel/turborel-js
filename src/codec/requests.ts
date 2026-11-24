@@ -15,6 +15,7 @@ import { LOB_BINARY, LOB_CHARACTER } from './tags.js';
 import { writeValues } from './value-codec.js';
 import type { LobKind, Value } from './values.js';
 import { Writer } from './writer.js';
+import { type DebugRequest, writeDebug } from './debug.js';
 
 /** A Lob request's operation (`[PROTOCOL Lob 'L']`, the request). */
 export type LobRequest =
@@ -73,7 +74,8 @@ export type Request =
   | { readonly kind: 'changeUser'; readonly user: string; readonly mechanism: string; readonly initial: Uint8Array }
   | { readonly kind: 'copyIn'; readonly table: string; readonly columns: readonly string[]; readonly ends: boolean }
   | { readonly kind: 'copyData'; readonly rows: readonly (readonly Value[])[] }
-  | { readonly kind: 'copyEnd'; readonly abandon: boolean };
+  | { readonly kind: 'copyEnd'; readonly abandon: boolean }
+  | { readonly kind: 'debug'; readonly debug: DebugRequest };
 
 /** Writes the body of a request of kind `K`, and gives its kind's octet. */
 type BodyWriter<K extends Request['kind']> = (w: Writer, q: Extract<Request, { kind: K }>) => number;
@@ -119,6 +121,7 @@ const WRITERS: { readonly [K in Request['kind']]: BodyWriter<K> } = {
   copyIn: (w, q) => (w.string(q.table).strings(q.columns).flag(q.ends), REQUEST.COPY_IN),
   copyData: (w, q) => (w.list(q.rows, writeRow), REQUEST.COPY_DATA),
   copyEnd: (w, q) => (w.flag(q.abandon), REQUEST.COPY_END),
+  debug: (w, q) => (writeDebug(w, q.debug), REQUEST.DEBUG),
 };
 
 /**

@@ -14,6 +14,7 @@
 
 import * as cap from './capabilities.js';
 import { Link } from './link.js';
+import type { Notice, NoticeHandler } from './told.js';
 import {
   type Batch,
   type CursorOptions,
@@ -56,6 +57,35 @@ export class Runner extends Link {
    */
   setAutocommit(on: boolean): void {
     this.#autocommit = on;
+  }
+
+  /**
+   * The value of a session setting as the server last told it, with no round trip.
+   *
+   * @param name - the setting, as SESSION.TIME_ZONE, or a status, as AUTHORIZATION
+   * @returns its value, empty for a null, or undefined if the server told none of that name
+   */
+  setting(name: string): string | undefined {
+    return this.told.settings.get(name);
+  }
+
+  /** @returns every setting the server told, by name */
+  settings(): ReadonlyMap<string, string> {
+    return new Map(this.told.settings);
+  }
+
+  /**
+   * Takes each notice from now on as it comes; none, they are kept, the last 64.
+   *
+   * @param handler - what takes them, or undefined to keep them
+   */
+  setNoticeHandler(handler: NoticeHandler | undefined): void {
+    this.told.handler = handler;
+  }
+
+  /** @returns the notices kept, taken */
+  takeNotices(): Notice[] {
+    return this.told.notices.splice(0);
   }
 
   /**

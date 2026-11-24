@@ -36,6 +36,7 @@ export const REQUEST = {
   COPY_IN: kind('I'),
   COPY_DATA: kind('J'),
   COPY_END: kind('N'),
+  DEBUG: kind('V'),
 } as const;
 
 /** The kinds of the replies a server sends. */
@@ -52,6 +53,8 @@ export const REPLY = {
   NOTICE: kind('N'),
   STATUS: kind('T'),
   PONG: kind('G'),
+  DEBUGGED: kind('V'),
+  EVENT: kind('W'),
 } as const;
 
 /** The kind of a compressed frame, the same both ways (`[PROTOCOL Compressed frames]`). */

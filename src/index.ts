@@ -41,6 +41,19 @@ export type { LobKind, Moment, Value } from './codec/values.js';
 export { Json, JsonObject } from './codec/json.js';
 export type { Column, Declared, Parameter } from './codec/composite.js';
 export type { Called, DynamicParameter, ParameterMode } from './codec/called.js';
+export type {
+  Breakpoint,
+  CursorShown,
+  DebugEvent,
+  Frame,
+  Named,
+  Origin,
+  Paused,
+  ResumeAction,
+  RoutineKind,
+} from './codec/debug.js';
+export { Debugger } from './session/debugger.js';
+export type { BreakOptions, RoutineName } from './session/debugger.js';
 export { columnType, columnTypeName, typeName, typeWritten } from './codec/declared.js';
 export type { JsonInput, JsonItem } from './codec/json.js';
 export type {

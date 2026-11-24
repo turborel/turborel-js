@@ -13,7 +13,7 @@
 import * as cap from './capabilities.js';
 import { capabilitiesOf, endsConnection } from './requests.js';
 import type { Offer } from './told.js';
-import { type Notice, type NoticeHandler, Told } from './told.js';
+import { type Notice, Told } from './told.js';
 import { compressFrames, received } from '../codec/compress.js';
 import { HEADER_BYTES, MAX_BODY, decodeHeader } from '../codec/frame.js';
 import { type Reply, completedHead, decodeReply, endsRequest } from '../codec/replies.js';
@@ -282,7 +282,7 @@ export class Link {
   }
 
   /**
-   * `reply`, unless it is a Notice or a Status, which is taken; a reply of a statement, its end noted.
+   * `reply`, unless it is a Notice, a Status or a debugger's Event, which is taken; a reply of a statement, its end noted.
    *
    * @param reply - the reply
    * @returns it, or undefined if it was taken
@@ -290,8 +290,36 @@ export class Link {
   #took(reply: Reply): Reply | undefined {
     if (reply.kind === 'notice') this.told.notice(noticeOf(reply));
     else if (reply.kind === 'status') this.told.settings.set(reply.name, reply.value);
+    else if (reply.kind === 'event') this.told.events.push(reply.event);
     else return this.#noted(reply);
     return undefined;
+  }
+
+  /**
+   * Whether a frame arrives within `ms`, none read; the connection kept if none does.
+   *
+   * @param ms - the milliseconds to wait, or undefined for no limit
+   * @returns true once one has begun to arrive
+   */
+  async arrives(ms: number | undefined): Promise<boolean> {
+    if (this.#lost !== undefined) throw this.#lost;
+    try {
+      return await this.#stream.arrives(ms);
+    } catch (e) {
+      throw this.#lostBy(e as TurborelError);
+    }
+  }
+
+  /** @returns the next reply, read as `receive` reads one: undefined if it was a Notice, a Status or an Event, each taken */
+  async takeUnasked(): Promise<Reply | undefined> {
+    const [kind, body] = await this.#frame();
+    let reply: Reply;
+    try {
+      reply = decodeReply(kind, body);
+    } catch (e) {
+      throw this.#skipped(kind, body, e);
+    }
+    return this.#took(reply);
   }
 
   /** @returns the next frame's kind and body, inflated first if compressed and compression was granted */
@@ -444,35 +472,6 @@ export class Link {
    */
   has(name: string): boolean {
     return this.told.has(name);
-  }
-
-  /**
-   * The value of a session setting as the server last told it, with no round trip.
-   *
-   * @param name - the setting, as SESSION.TIME_ZONE, or a status, as AUTHORIZATION
-   * @returns its value, empty for a null, or undefined if the server told none of that name
-   */
-  setting(name: string): string | undefined {
-    return this.told.settings.get(name);
-  }
-
-  /** @returns every setting the server told, by name */
-  settings(): ReadonlyMap<string, string> {
-    return new Map(this.told.settings);
-  }
-
-  /**
-   * Takes each notice from now on as it comes; none, they are kept, the last 64.
-   *
-   * @param handler - what takes them, or undefined to keep them
-   */
-  setNoticeHandler(handler: NoticeHandler | undefined): void {
-    this.told.handler = handler;
-  }
-
-  /** @returns the notices kept, taken */
-  takeNotices(): Notice[] {
-    return this.told.notices.splice(0);
   }
 
   /** @returns whether the session's transaction is active, as the server last said */

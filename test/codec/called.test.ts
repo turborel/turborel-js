@@ -48,11 +48,11 @@ function prepared(inputs: readonly Parameter[], tail: (w: Writer) => void): Uint
   return w.finish();
 }
 
-/** Verifies: [PROTOCOL Capabilities] `parameter-modes` is a capability, the last of version 1's, asked for by default. */
+/** Verifies: [PROTOCOL Capabilities] `parameter-modes` is a capability, the twentieth of version 1's, asked for by default. */
 test('parameter-modes is asked for', () => {
   assert.equal(PARAMETER_MODES, 'parameter-modes');
-  assert.equal(ALL_CAPABILITIES.at(-1), PARAMETER_MODES);
-  assert.equal(ALL_CAPABILITIES.length, 20);
+  assert.equal(ALL_CAPABILITIES.at(-2), PARAMETER_MODES);
+  assert.equal(ALL_CAPABILITIES.length, 21);
   assert.ok(Offer.default().capabilities.includes(PARAMETER_MODES));
 });
 

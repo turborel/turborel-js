@@ -9,6 +9,7 @@
 
 import { type Column, type Parameter, readDiagnostics, readFailure, readParameter, readRow } from './composite.js';
 import { type Called, readPreparedColumns } from './called.js';
+import { type DebugEvent, type DebugReply, readDebugged, readEvent } from './debug.js';
 import { readColumns } from './declared.js';
 import { LOB_REPLY, REPLY } from './kinds.js';
 import { Reader } from './reader.js';
@@ -73,7 +74,9 @@ export type Reply =
   | { readonly kind: 'lobData'; readonly data: Uint8Array }
   | { readonly kind: 'lobLocator'; readonly locator: number }
   | { readonly kind: 'notice'; readonly sqlstate: string; readonly message: string; readonly diagnostics?: Diagnostics }
-  | { readonly kind: 'status'; readonly name: string; readonly value: string };
+  | { readonly kind: 'status'; readonly name: string; readonly value: string }
+  | { readonly kind: 'debugged'; readonly debugged: DebugReply }
+  | { readonly kind: 'event'; readonly event: DebugEvent };
 
 /** The tail tags a Complete takes. */
 const COMPLETE_TAGS: readonly number[] = [POSITION, MORE, ROWS, GENERATED, CONDITIONS, TIME];
@@ -183,21 +186,27 @@ const READERS: Readonly<Partial<Record<number, (r: Reader) => Reply>>> = {
   [REPLY.NOTICE]: readNotice,
   [REPLY.STATUS]: (r) => ({ kind: 'status', name: r.string(), value: r.string() }),
   [REPLY.PONG]: () => ({ kind: 'pong' }),
+  [REPLY.DEBUGGED]: (r) => ({ kind: 'debugged', debugged: readDebugged(r) }),
+  [REPLY.EVENT]: (r) => ({ kind: 'event', event: readEvent(r) }),
 };
+
+/** The kinds of reply that more of their request's follow: a Description, Rows, a Notice, a Status, and an Event, which ends none. */
+const UNENDING: ReadonlySet<number> = new Set([REPLY.DESCRIPTION, REPLY.ROWS, REPLY.NOTICE, REPLY.STATUS, REPLY.EVENT]);
 
 /**
  * Whether a reply of `kind` and `body`, decoded or not, is the last its
  * request is answered with, by the order of a statement's replies, as
  * turborel-protocol's `ends_request` tells it: a Description, Rows, a
  * Notice or a Status has more after it; a Complete has if its tail says
- * more (tag 5); any other reply ends its request's.
+ * more (tag 5); any other reply ends its request's. An Event, sent only
+ * between requests, ends none.
  *
  * @param kind - its kind
  * @param body - its body
  * @returns true if no reply of its request follows
  */
 export function endsRequest(kind: number, body: Uint8Array): boolean {
-  if (kind === REPLY.DESCRIPTION || kind === REPLY.ROWS || kind === REPLY.NOTICE || kind === REPLY.STATUS) return false;
+  if (UNENDING.has(kind)) return false;
   if (kind !== REPLY.COMPLETE) return true;
   return completedHead(kind, body)?.more !== true;
 }
