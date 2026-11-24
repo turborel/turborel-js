@@ -11,14 +11,14 @@ import { TurborelError } from '../src/index.js';
 
 /** Verifies: [DESIGN] D12 a failure carries its SQLCODE, SQLSTATE, message, rule and whether a transaction is active. */
 test('a failure carries what the server said of it', () => {
-  const failure = new TurborelError(-103, '2A000', 'table ANN.NOPE is not defined', {
+  const failure = new TurborelError(-103, '42000', 'table ANN.NOPE is not defined', {
     rule: 'X3.135-1986 §5.4 SR5',
     active: true,
   });
   assert.ok(failure instanceof Error);
   assert.equal(failure.name, 'TurborelError');
   assert.equal(failure.sqlcode, -103);
-  assert.equal(failure.sqlstate, '2A000');
+  assert.equal(failure.sqlstate, '42000');
   assert.equal(failure.message, 'table ANN.NOPE is not defined');
   assert.equal(failure.rule, 'X3.135-1986 §5.4 SR5');
   assert.equal(failure.active, true);

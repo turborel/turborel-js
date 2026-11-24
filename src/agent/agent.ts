@@ -67,6 +67,9 @@ function exception(sqlstate: string, message: string, rule?: string): TurborelEr
   return new TurborelError(sqlcode, sqlstate, message, rule === undefined ? {} : { rule: `${SQL92} ${rule}` });
 }
 
+/** SQLSTATE 42000, syntax error or access rule violation, of a statement run directly or prepared alike. */
+const SYNTAX_OR_ACCESS = '42000';
+
 /**
  * A syntax error of a connection statement.
  *
@@ -74,7 +77,7 @@ function exception(sqlstate: string, message: string, rule?: string): TurborelEr
  * @returns the failure
  */
 function syntax(message: string): TurborelError {
-  return new TurborelError(SQLCODE.syntax, '2A000', message);
+  return new TurborelError(SQLCODE.syntax, SYNTAX_OR_ACCESS, message);
 }
 
 /** A connection statement's tokens, read in order. */
@@ -119,7 +122,7 @@ class Reader {
     if (next === undefined) throw syntax('expected a <simple value specification>');
     throw new TurborelError(
       SQLCODE.syntaxRule,
-      '2A000',
+      SYNTAX_OR_ACCESS,
       "a client's connection statement names by character string literals",
     );
   }

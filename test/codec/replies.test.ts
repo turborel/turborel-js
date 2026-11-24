@@ -175,7 +175,7 @@ test('a malformed condition fails as a value', () => {
 
 /** Verifies: [PROTOCOL Error 'E'] Error is a failure: SQLCODE, SQLSTATE, message, cited rule, position, active, and its diagnostics, tags 7 to 15. */
 test('Error, and failures', () => {
-  const failure = new TurborelError(-103, '2A000', 'column K is ambiguous', {
+  const failure = new TurborelError(-103, '42000', 'column K is ambiguous', {
     rule: 'X3.135-1986 §5.7 SR3b',
     position: 7n,
     active: false,

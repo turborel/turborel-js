@@ -176,10 +176,10 @@ test("the agent's statements", () => {
   );
   assert.equal(connectionStatement('SET SCHEMA ANN'), undefined);
   assert.equal(connectionStatement('VALUES 1'), undefined);
-  assert.throws(() => connectionStatement('CONNECT db'), isFailure(-102, '2A000'));
-  assert.throws(() => connectionStatement("CONNECT TO 'a' 'b'"), isFailure(-102, '2A000'));
-  assert.throws(() => connectionStatement('CONNECT TO'), isFailure(-102, '2A000'));
-  assert.throws(() => connectionStatement('CONNECT TO 7'), isFailure(-103, '2A000'));
+  assert.throws(() => connectionStatement('CONNECT db'), isFailure(-102, '42000'));
+  assert.throws(() => connectionStatement("CONNECT TO 'a' 'b'"), isFailure(-102, '42000'));
+  assert.throws(() => connectionStatement('CONNECT TO'), isFailure(-102, '42000'));
+  assert.throws(() => connectionStatement('CONNECT TO 7'), isFailure(-103, '42000'));
   assert.throws(() => connectionStatement('CONNECT TO :host'), isFailure(-900, '0A000'));
   assert.deepEqual(
     [identifierOf('ann'), identifierOf('"Mixed"'), identifierOf('first'), identifierOf('a b')],

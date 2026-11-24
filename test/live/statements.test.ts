@@ -64,7 +64,7 @@ test('queries, statements and failures', async (t) => {
   assert.deepEqual(none.kind === 'done' && [none.completion.sqlcode, none.completion.sqlstate], [100, '02000']);
   await assert.rejects(conn.query('SELECT * FROM NOPE'), (e: unknown) => {
     assert.ok(e instanceof TurborelError);
-    assert.deepEqual([e.sqlcode, e.sqlstate, e.message], [-103, '2A000', 'table ANN.NOPE is not defined']);
+    assert.deepEqual([e.sqlcode, e.sqlstate, e.message], [-103, '42000', 'table ANN.NOPE is not defined']);
     assert.deepEqual(e.diagnostics, { severity: 'ERROR', schema: 'ANN', table: 'NOPE' });
     return true;
   });
@@ -401,7 +401,7 @@ test('a value cut to its parameter warns 01004', async (t) => {
   await conn.terminate();
 });
 
-/** Verifies: [CLIENT Running statements] an exact number of 38 digits, turborel's most, sent as a parameter and given as a result with every digit; one of 39 refused with 22003; a quotient of the scale turborel gives it, 1/3 being 0.333333. */
+/** Verifies: [CLIENT Running statements] an exact number of 38 digits, turborel's most, sent as a parameter and given as a result with every digit; one of 39 refused with 22003, as a parameter or as text cast, and with 42000 as a literal; a quotient of the scale turborel gives it, 1/3 being 0.333333. */
 test('exact numbers of 38 digits', async (t) => {
   if (live(t) === undefined) return;
   const conn = await ann();
@@ -417,6 +417,9 @@ test('exact numbers of 38 digits', async (t) => {
   const echoed = await conn.prepare('VALUES CAST(? AS NUMERIC(38,0))');
   assert.deepEqual(rowsOf(await conn.execute(echoed, [-most])), [[-most]]);
   await assert.rejects(conn.execute(insert, [10n ** 38n, null]), isFailure(-301, '22003'), '39 digits');
+  await assert.rejects(conn.query(`VALUES ${'9'.repeat(39)}`), isFailure(-103, '42000'), 'a literal of 39 digits');
+  const text = await conn.prepare('VALUES CAST(CAST(? AS VARCHAR(50)) AS NUMERIC(38,0))');
+  await assert.rejects(conn.execute(text, ['9'.repeat(39)]), isFailure(-301, '22003'), 'text of 39 digits');
   const [[third]] = rowsOf(await conn.query('VALUES 1/3')) as [[Decimal]];
   assert.equal(String(third), '0.333333');
   await conn.query('ROLLBACK');

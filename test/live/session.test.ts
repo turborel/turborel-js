@@ -146,7 +146,7 @@ test('capabilities not asked for', async (t) => {
   const conn = await ann(Offer.none());
   assert.deepEqual(conn.granted, []);
   await assert.rejects(conn.query('SELECT * FROM NOPE'), (e: unknown) => {
-    assert.ok(isFailure(-103, '2A000')(e));
+    assert.ok(isFailure(-103, '42000')(e));
     return (e as { diagnostics?: unknown }).diagnostics === undefined;
   });
   await conn.query('CREATE TABLE H (ID INTEGER GENERATED ALWAYS AS IDENTITY, V INTEGER)');
@@ -196,7 +196,7 @@ test('ping and reset', async (t) => {
   await conn.reset();
   assert.deepEqual(conn.takeNotices(), [], 'no transaction, no notice');
   await assert.rejects(conn.execute(s), isFailure(-921, '26000'), 'its statements gone');
-  await assert.rejects(conn.query('SELECT X FROM MODULE.TMP'), isFailure(-103, '2A000'), 'its temporary tables gone');
+  await assert.rejects(conn.query('SELECT X FROM MODULE.TMP'), isFailure(-103, '42000'), 'its temporary tables gone');
   await conn.terminate();
 });
 

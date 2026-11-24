@@ -24,8 +24,8 @@ Appendix A, SQLSTATE and SQLCODE, lists every one the server sends.
 | 24 | Invalid cursor state | A cursor opened again, or fetched or closed when not open |
 | 26 | Invalid SQL statement name | A prepared statement deallocated, or never prepared |
 | 28 | Invalid authorization specification | Credentials refused, which lose a connection being made or changing user |
-| 2A | Syntax error or access rule violation | A statement the server cannot read, or names what is not there |
 | 40 | Transaction rollback | A commit that failed, the transaction rolled back, as 40002 |
+| 42 | Syntax error or access rule violation | A statement the server cannot read, names what is not there, or may not run, run directly or prepared alike, as 42000 |
 | TB | turborel's own | As TB910, an argument the driver does not take, TB916, a value received it cannot take, and TB920, a statement cancelled |
 
 ## The failures the driver raises

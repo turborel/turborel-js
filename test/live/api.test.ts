@@ -63,7 +63,7 @@ test('connect and query', async (t) => {
     [2n, 'N2'],
   ]);
   assert.equal(rowCount, 2n);
-  await assert.rejects(client.query('SELECT * FROM NOPE'), isFailure(-103, '2A000'));
+  await assert.rejects(client.query('SELECT * FROM NOPE'), isFailure(-103, '42000'));
   await client.close();
   await client.close();
   assert.equal(client.closed, true);

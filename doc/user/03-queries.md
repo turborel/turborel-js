@@ -34,7 +34,7 @@ await conn.query('COMMIT');
 await conn.terminate();
 // done 00000 2n
 // [ 'ID', 'NAME' ] [ [ 1n, 'Ada' ], [ 2n, 'Grace' ] ]
-// -103 2A000 table ANN.NOPE is not defined
+// -103 42000 table ANN.NOPE is not defined
 ```
 
 ## Values

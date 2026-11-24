@@ -208,7 +208,7 @@ test('a copy all or nothing', async (t) => {
   assert.equal(conn.inTransaction, false, 'committed as it succeeded');
   await assert.rejects(conn.copyRows('U', [], [[5n, 'toolong']]), isFailure(-301, '22001'));
   assert.equal(conn.inTransaction, false, 'rolled back as it failed');
-  await assert.rejects(conn.copyRows('NOPE', [], [[1n]]), isFailure(-103, '37000'));
+  await assert.rejects(conn.copyRows('NOPE', [], [[1n]]), isFailure(-103, '42000'));
   await conn.terminate();
   const ungranted = await ann(Offer.none());
   await assert.rejects(ungranted.copyIn('U'), isConnectionFailure, '`copy` not granted');

@@ -51,7 +51,7 @@ default one. Every other statement goes to the current connection.
 | 25000 | -917 | DISCONNECT of a connection whose transaction is active |
 | 28000 | -104 | A user that is no authorization identifier |
 | 2E000 | -919 | A connection name that is no identifier |
-| 2A000 | -102 or -103 | A connection statement malformed, or naming by a value that is no character string literal |
+| 42000 | -102 or -103 | A connection statement malformed, or naming by a value that is no character string literal |
 
 A DISCONNECT that failed to end a connection completes with warning
 01002.

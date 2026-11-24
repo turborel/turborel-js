@@ -80,7 +80,7 @@ in [Appendix B](../appendix/b-errors.md) and on each page.
 ```js
 import { TurborelError } from 'turborel';
 
-const failure = new TurborelError(-103, '2A000', 'table ANN.NOPE is not defined', {
+const failure = new TurborelError(-103, '42000', 'table ANN.NOPE is not defined', {
   rule: 'X3.135-1986 §5.4 SR5',
   position: 14n,
 });
@@ -88,7 +88,7 @@ console.log(failure instanceof Error, failure.name);
 console.log(failure.sqlcode, failure.sqlstate, failure.message);
 console.log(failure.rule, failure.position, failure.active);
 // true TurborelError
-// -103 2A000 table ANN.NOPE is not defined
+// -103 42000 table ANN.NOPE is not defined
 // X3.135-1986 §5.4 SR5 14n false
 ```
 

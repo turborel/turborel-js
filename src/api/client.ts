@@ -181,7 +181,7 @@ export class Client {
    *
    * @param sql - the statement
    * @returns the statement, to execute as often as wanted
-   * @throws {@link TurborelError} the server's: 37000 if it is not preparable
+   * @throws {@link TurborelError} the server's: 42000 if it is not preparable
    */
   async prepare(sql: string): Promise<PreparedStatement> {
     return new PreparedStatement(this, await this.turn(() => this.connection.prepare(sql)));

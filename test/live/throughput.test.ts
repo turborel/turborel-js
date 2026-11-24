@@ -134,7 +134,7 @@ test('a pool', async (t) => {
   assert.equal(again.connection.setting('SESSION.TIME_ZONE'), '+01:00', 'its reset statements ran');
   await assert.rejects(
     again.connection.query('SELECT X FROM MODULE.TMP'),
-    isFailure(-103, '2A000'),
+    isFailure(-103, '42000'),
     'its session renewed',
   );
   await again.release();

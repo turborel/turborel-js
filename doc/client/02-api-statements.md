@@ -36,7 +36,7 @@ low-level client's statement.
 
 | SQLSTATE | SQLCODE | When |
 |---|---|---|
-| 37000 | -103 | A statement that cannot be prepared, or a `?` that takes no type where it stands |
+| 42000 | -103 | A statement that cannot be prepared, or a `?` that takes no type where it stands |
 | 07001 | -921 | Values not one for each parameter |
 | 26000 | -921 | A statement closed |
 

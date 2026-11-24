@@ -147,7 +147,7 @@ export class Runner extends Link {
    *
    * @param sql - the statement
    * @returns the statement, its parameters' types and a query's columns
-   * @throws {@link TurborelError} the server's: 37000 if it is not preparable, or a `?` takes no type where it stands; 08006 if the connection is lost
+   * @throws {@link TurborelError} the server's: 42000 if it is not preparable, or a `?` takes no type where it stands; 08006 if the connection is lost
    */
   async prepare(sql: string): Promise<Statement> {
     const statement = this.#nextStatement;
