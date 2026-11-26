@@ -19,6 +19,7 @@ class Connection {
 
 class Copying {
   send(row: readonly Value[]): Promise<void>;
+  sendText(row: readonly (string | null)[]): Promise<void>;
   ping(): Promise<void>;
   finish(): Promise<bigint>;
   abandon(): Promise<void>;
@@ -55,11 +56,21 @@ it before it ends abandons it. Until it ends, the connection sends
 nothing but its rows, its end and a ping. `copyRows` copies an
 iterable's rows, abandoning the copy if they fail to come.
 
+`sendText` sends a row of text, a cell for each column, the text a
+field of a file holds, or null, once the server granted `columns`,
+which a connection asks for by default. Its rows go by column, in
+CopyColumns, about 256 KiB to a message, and keep their order among
+those `send` sends in the same copy. The server takes each cell as the
+character string of its text, cast to its column's type and assigned
+as INSERT assigns it, so a null and an empty string stay apart and a
+cell too long fails at `finish`, its row named, rather than being cut.
+
 `importInto` inserts a source's records into a table through one
 prepared INSERT, its columns the source's headings or else the table's,
 a batch committed at a time, 1000 by default, 0 for all at once; or by
 copy, where the server grants it, no row is to be skipped and no column
-is a large object's. The session must have no transaction active. A
+is a large object's: by column, each field its text as the source read
+it, where the server grants `columns`; by row otherwise. The session must have no transaction active. A
 string for a character string column is assigned as INSERT assigns it;
 a field longer than 64 KiB for a CLOB or BLOB column goes as a large
 object it creates. `Delimited` reads CSV (RFC 4180) or tab-separated
@@ -74,6 +85,7 @@ a Description, Rows and a Complete, which `readNative` reads back.
 
 | SQLSTATE | SQLCODE | When |
 |---|---|---|
+| 08006 | -919 | `sendText` on a connection not granted `columns`, refused before it is sent, the connection kept |
 | TB910 | -910 | Another request while a copy is under way; a delimiter that is not one ASCII character, nor a quote or a line break |
 | 22000 | -301 | A source that cannot be read, or a record of too many or too few fields: a `SourceError`, or an `ImportError` of the input's |
 | 22001 | -301 | A string too long for its column, which an import refuses, not cuts |

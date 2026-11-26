@@ -245,6 +245,14 @@ export const CLIENT: Readonly<Record<string, Request>> = {
   },
   'copy-end': { kind: 'copyEnd', abandon: false },
   'copy-end-abandon': { kind: 'copyEnd', abandon: true },
+  'copy-columns': {
+    kind: 'copyColumns',
+    rows: 2,
+    columns: [
+      { nulls: Uint8Array.of(0b10), ends: [1, 1], text: utf8('1') },
+      { nulls: Uint8Array.of(0), ends: [1, 1], text: utf8('b') },
+    ],
+  },
   'query-compressed': query(`SELECT '${'x'.repeat(2000)}' FROM T`, true),
   'debug-identify': debug({ what: 'identify' }),
   'debug-attach': debug({ what: 'attach', connection: 2n }),

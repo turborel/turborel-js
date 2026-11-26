@@ -36,6 +36,7 @@ export const REQUEST = {
   COPY_IN: kind('I'),
   COPY_DATA: kind('J'),
   COPY_END: kind('N'),
+  COPY_COLUMNS: kind('O'),
   DEBUG: kind('V'),
 } as const;
 

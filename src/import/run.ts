@@ -5,6 +5,8 @@
  * a batch to each copy, each copy committing its batch as it ends, a row
  * the server refuses failing its copy, the failure's detail naming the
  * row, so the import says its record as it would of a row inserted alone.
+ * Granted `columns`, a copy sends a source's text by column, as it is,
+ * the server casting each cell to its column's type.
  *
  * @packageDocumentation
  */
@@ -31,6 +33,7 @@ import type { Connection } from '../session/connection.js';
 import type { Copying } from '../session/copy.js';
 import { endsConnection } from '../session/link.js';
 import type { Statement } from '../session/statements.js';
+import { COLUMNS } from '../session/capabilities.js';
 
 /** What the server's detail of a row a copy refused is: `row 7 of the copy`. */
 const COPY_ROW = /^row (\d+) of the copy$/u;
@@ -226,6 +229,19 @@ class InsertRun {
   }
 }
 
+/** A record's fields as text, each a string or null. */
+type Text = readonly (string | null)[];
+
+/**
+ * `values` as text, if every one is a string or null, as a source that knows no types gives them.
+ *
+ * @param values - a record's values
+ * @returns them, or undefined if one is of another type
+ */
+function textOf(values: readonly Value[]): Text | undefined {
+  return values.every((v) => v === null || typeof v === 'string') ? values : undefined;
+}
+
 /** An import by bulk copy under way. */
 class CopiedRun {
   readonly #conn: Connection;
@@ -277,7 +293,7 @@ class CopiedRun {
    * @param source - the source
    * @returns where it began and its values, or undefined at the end
    */
-  async #checked(source: Source): Promise<[Position, Value[]] | undefined> {
+  async #checked(source: Source): Promise<[Position, Value[], Text | undefined] | undefined> {
     const record = await nextRecord(source, (at, cause) => this.#stop(at, cause));
     if (record === undefined) return undefined;
     const wanted = this.#types.length;
@@ -285,8 +301,11 @@ class CopiedRun {
       const message = `${String(record.values.length)} fields, for ${String(wanted)} columns`;
       throw this.#stop(record.position, { kind: 'input', message });
     }
+    // Granted `columns`, text goes by column as it is, the server casting each cell.
+    const text = this.#conn.has(COLUMNS) ? textOf(record.values) : undefined;
+    if (text !== undefined) return [record.position, [], text];
     try {
-      return [record.position, assigned(record.values, this.#types)];
+      return [record.position, assigned(record.values, this.#types), undefined];
     } catch (e) {
       throw this.#stop(record.position, sqlCause(e));
     }
@@ -311,9 +330,9 @@ class CopiedRun {
     }
     try {
       while (next !== undefined) {
-        const [at, values] = next;
+        const [at, values, text] = next;
         try {
-          await copy.send(values);
+          await (text === undefined ? copy.send(values) : copy.sendText(text));
         } catch (e) {
           throw this.#stop(at, sqlCause(e));
         }

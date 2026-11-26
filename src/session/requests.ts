@@ -28,6 +28,7 @@ const NEEDED: Readonly<Partial<Record<Request['kind'], string>>> = {
   changeUser: cap.CHANGE_USER,
   copyIn: cap.COPY,
   copyData: cap.COPY,
+  copyColumns: cap.COLUMNS,
   copyEnd: cap.COPY,
   debug: cap.DEBUGGER,
 };

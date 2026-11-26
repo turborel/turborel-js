@@ -74,8 +74,19 @@ export type Request =
   | { readonly kind: 'changeUser'; readonly user: string; readonly mechanism: string; readonly initial: Uint8Array }
   | { readonly kind: 'copyIn'; readonly table: string; readonly columns: readonly string[]; readonly ends: boolean }
   | { readonly kind: 'copyData'; readonly rows: readonly (readonly Value[])[] }
+  | { readonly kind: 'copyColumns'; readonly rows: number; readonly columns: readonly ColumnCells[] }
   | { readonly kind: 'copyEnd'; readonly abandon: boolean }
   | { readonly kind: 'debug'; readonly debug: DebugRequest };
+
+/** A column of a CopyColumns: a bit of `nulls` for each row, set if its cell is null, row 0 the low bit of the first byte; where each row's cell ends in `text`; and the cells' UTF-8, one after another. */
+export interface ColumnCells {
+  /** A bit for each row, set if its cell is null. */
+  readonly nulls: Uint8Array;
+  /** Where each row's cell ends in `text`, in octets. */
+  readonly ends: readonly number[];
+  /** The cells' UTF-8, one after another. */
+  readonly text: Uint8Array;
+}
 
 /** Writes the body of a request of kind `K`, and gives its kind's octet. */
 type BodyWriter<K extends Request['kind']> = (w: Writer, q: Extract<Request, { kind: K }>) => number;
@@ -120,6 +131,15 @@ const WRITERS: { readonly [K in Request['kind']]: BodyWriter<K> } = {
   changeUser: (w, q) => (w.string(q.user).string(q.mechanism).bytes(q.initial), REQUEST.CHANGE_USER),
   copyIn: (w, q) => (w.string(q.table).strings(q.columns).flag(q.ends), REQUEST.COPY_IN),
   copyData: (w, q) => (w.list(q.rows, writeRow), REQUEST.COPY_DATA),
+  copyColumns: (w, q) => {
+    w.u32(q.rows).list(q.columns, (inner, c) => {
+      inner
+        .bytes(c.nulls)
+        .list(c.ends, (e, end) => e.u32(end))
+        .bytes(c.text);
+    });
+    return REQUEST.COPY_COLUMNS;
+  },
   copyEnd: (w, q) => (w.flag(q.abandon), REQUEST.COPY_END),
   debug: (w, q) => (writeDebug(w, q.debug), REQUEST.DEBUG),
 };

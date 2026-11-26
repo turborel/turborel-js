@@ -179,6 +179,49 @@ test('a copy', async (t) => {
   await conn.terminate();
 });
 
+/** Verifies: [PROTOCOL CopyColumns 'O'] [CLIENT Copying and exporting] granted `columns`, rows of text go by column, mixed with rows of values in one copy, in order: a null and an empty string kept apart, each cell cast to its column's type; a cell too long fails at CopyEnd, its row named, every row undone; abandoned, none kept; not granted, refused before it is sent. */
+test('a copy by column', async (t) => {
+  if (live(t) === undefined) return;
+  const conn = await ann();
+  assert.ok(conn.has(cap.COLUMNS));
+  await conn.query('CREATE TABLE BYCOL (ID INTEGER, NAME VARCHAR(5))');
+  const copy = await conn.copyIn('BYCOL', ['ID', 'NAME']);
+  await copy.sendText(['1', null]);
+  await copy.sendText(['2', '']);
+  await copy.send([3n, 'row']);
+  for (let i = 4; i <= 2000; i += 1) await copy.sendText([String(i), `n${String(i % 100)}`]);
+  assert.equal(await copy.finish(), 2000n);
+  const firsts = rowsOf(await conn.query('SELECT ID, NAME, NAME IS NULL FROM BYCOL WHERE ID <= 3 ORDER BY ID'));
+  assert.deepEqual(firsts, [
+    [1n, null, true],
+    [2n, '', false],
+    [3n, 'row', false],
+  ]);
+  const long = await conn.copyIn('BYCOL');
+  await long.sendText(['7001', 'fits']);
+  await long.sendText(['7002', 'too long']);
+  await long.sendText(['7003', 'after']);
+  await assert.rejects(long.finish(), (e: unknown) => {
+    assert.ok(isFailure(-301, '22001')(e));
+    return (e as { diagnostics?: { detail?: string } }).diagnostics?.detail === 'row 2 of the copy';
+  });
+  assert.equal(await single(conn, 'SELECT COUNT(*) FROM BYCOL WHERE ID > 7000'), 0n, 'every row undone');
+  const abandoned = await conn.copyIn('BYCOL');
+  await abandoned.sendText(['10', 'gone']);
+  await abandoned.abandon();
+  assert.equal(await single(conn, 'SELECT COUNT(*) FROM BYCOL'), 2000n);
+  await conn.query('ROLLBACK');
+  await conn.terminate();
+  const plain = await ann(new Offer([cap.COPY]));
+  await plain.query('CREATE TABLE BYROW (ID INTEGER)');
+  const byRow = await plain.copyIn('BYROW');
+  await assert.rejects(byRow.sendText(['1']), isConnectionFailure);
+  await byRow.abandon();
+  assert.equal(plain.isLost, false);
+  await plain.query('ROLLBACK');
+  await plain.terminate();
+});
+
 /** Verifies: [PROTOCOL Conversations] [PROTOCOL CopyEnd 'N'] all or nothing: a row refused undoes every row, the failure's detail naming it; abandoned, none is kept; under autocommit the copy commits; else a failing copy leaves the transaction's statements before it. */
 test('a copy all or nothing', async (t) => {
   if (live(t) === undefined) return;

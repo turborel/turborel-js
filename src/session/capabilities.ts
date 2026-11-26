@@ -49,6 +49,8 @@ export const DECLARED_TYPES = 'declared-types';
 export const PARAMETER_MODES = 'parameter-modes';
 /** The request Debug, answered by Debugged or a Complete, and the Event the server sends unasked, an extension. */
 export const DEBUGGER = 'debugger';
+/** The request CopyColumns, rows of a copy by column, with `copy`. */
+export const COLUMNS = 'columns';
 
 /** Every capability of version 1, in the order Ready grants them. */
 export const ALL_CAPABILITIES: readonly string[] = [
@@ -73,6 +75,7 @@ export const ALL_CAPABILITIES: readonly string[] = [
   DECLARED_TYPES,
   PARAMETER_MODES,
   DEBUGGER,
+  COLUMNS,
 ];
 
 /** The session's authorization identifier, a status the server tells. */

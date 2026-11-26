@@ -24,6 +24,13 @@ is abandoned. `copyRows(table, columns, rows)` copies the rows an
 iterable or an async iterable gives, and abandons the copy if they fail
 to come.
 
+`sendText(row)` sends a row of text instead, a string or null for each
+column, as a file's fields hold them, where the server grants `columns`.
+Such rows go by column, the faster way for a bulk load, and the server
+casts each cell to its column's type, so `'42'` goes into an INTEGER
+column, a null and an empty string stay apart, and a cell too long fails
+`finish`, its row named. A copy may mix rows of values and rows of text.
+
 ```js
 import { Trust, connectTo, tcp } from 'turborel';
 
@@ -60,7 +67,8 @@ The import commits a batch of rows at a time, 1000 unless
 transaction active. A string for a character string column is assigned
 as INSERT assigns it, so one too long is refused, not cut. Where the
 server grants `copy`, no bad row is to be skipped, and no column is a
-large object's, the rows go by copy, a batch to each.
+large object's, the rows go by copy, a batch to each: by column, each
+field its text as read, where the server grants `columns`.
 
 A row that fails stops the import, its batch rolled back, with an
 `ImportError`: where its record began, why, the input's or SQL's, and

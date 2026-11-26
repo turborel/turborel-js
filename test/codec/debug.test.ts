@@ -13,10 +13,10 @@ import { ALL_CAPABILITIES, DEBUGGER } from '../../src/session/capabilities.js';
 import { Offer } from '../../src/session/told.js';
 import { isConnectionFailure } from '../support/failures.js';
 
-/** Verifies: [PROTOCOL Capabilities] `debugger` is a capability, the last of version 1's twenty-one, asked for by default as turborel-client asks for every one but compression. */
+/** Verifies: [PROTOCOL Capabilities] `debugger` is a capability, the twenty-first of version 1's, asked for by default as turborel-client asks for every one but compression. */
 test('debugger is asked for', () => {
   assert.equal(DEBUGGER, 'debugger');
-  assert.deepEqual([ALL_CAPABILITIES.at(-1), ALL_CAPABILITIES.length], [DEBUGGER, 21]);
+  assert.deepEqual([ALL_CAPABILITIES.at(-2), ALL_CAPABILITIES.length], [DEBUGGER, 22]);
   assert.ok(Offer.default().capabilities.includes(DEBUGGER));
 });
 

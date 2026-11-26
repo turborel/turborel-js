@@ -61,7 +61,7 @@ export interface OpenOptions {
 }
 
 /** The requests a client sends while a copy is under way, until its CopyEnd. */
-const DURING_COPY: ReadonlySet<Request['kind']> = new Set(['copyData', 'copyEnd', 'ping']);
+const DURING_COPY: ReadonlySet<Request['kind']> = new Set(['copyData', 'copyColumns', 'copyEnd', 'ping']);
 
 /** A session of a server's, over one connection: its frames, its login and what the server told. */
 export class Link {
